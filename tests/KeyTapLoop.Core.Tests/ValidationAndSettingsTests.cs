@@ -18,6 +18,7 @@ public class ValidationTests
         DelaySeconds = "3",
         StartHotkey = AppSettings.DefaultStartHotkey,
         StopHotkey = AppSettings.DefaultStopHotkey,
+        ToggleHotkey = AppSettings.DefaultToggleHotkey,
     };
 
     [Fact]
@@ -178,17 +179,29 @@ public class ValidationTests
     }
 
     [Theory]
-    [InlineData("F1", "Ctrl+F2", false)]          // no modifier on Start
-    [InlineData("Ctrl+F1", "Ctrl+F1", false)]     // same shortcut twice
-    [InlineData("Alt+Tab", "Ctrl+F2", false)]     // reserved
-    [InlineData("Ctrl+Tab", "Ctrl+F2", false)]    // Tab not allowed
-    [InlineData("Ctrl+F1", "Ctrl+F2", true)]
-    [InlineData("Ctrl+Shift+S", "Ctrl+Shift+X", true)]
-    public void Hotkey_pairs_are_checked(string start, string stop, bool ok)
+    [InlineData("F1", "Ctrl+F2", "Ctrl+F3", false)]          // no modifier on Start
+    [InlineData("Ctrl+F1", "Ctrl+F1", "Ctrl+F3", false)]     // Start and Stop the same
+    [InlineData("Ctrl+F1", "Ctrl+F2", "Ctrl+F2", false)]     // Stop and Toggle the same
+    [InlineData("Ctrl+F1", "Ctrl+F2", "Ctrl+F1", false)]     // Start and Toggle the same
+    [InlineData("Alt+Tab", "Ctrl+F2", "Ctrl+F3", false)]     // reserved
+    [InlineData("Ctrl+Tab", "Ctrl+F2", "Ctrl+F3", false)]    // Tab not allowed
+    [InlineData("Ctrl+F1", "Ctrl+F2", "F3", false)]          // Toggle needs a modifier too
+    [InlineData("Ctrl+F1", "Ctrl+F2", "Ctrl+F3", true)]
+    [InlineData("Ctrl+Shift+S", "Ctrl+Shift+X", "Ctrl+Shift+T", true)]
+    public void Hotkey_sets_are_checked(string start, string stop, string toggle, bool ok)
     {
         Assert.True(KeyChord.TryParse(start, out var a));
         Assert.True(KeyChord.TryParse(stop, out var b));
-        Assert.Equal(ok, RunValidator.ValidateHotkeys(a, b) is null);
+        Assert.True(KeyChord.TryParse(toggle, out var c));
+        Assert.Equal(ok, RunValidator.ValidateHotkeys(a, b, c) is null);
+    }
+
+    [Fact]
+    public void Output_cannot_match_the_toggle_shortcut_either()
+    {
+        var input = Valid();
+        input.Output = AppSettings.DefaultToggleHotkey;
+        Assert.Contains(Field.Output, RunValidator.Validate(input).Errors.Keys);
     }
 }
 
@@ -300,6 +313,36 @@ public sealed class SettingsTests : IDisposable
         var path = PathFor("empty.json");
         File.WriteAllText(path, "");
         Assert.NotNull(SettingsStore.Load(path).Warning);
+    }
+
+    [Fact]
+    public void An_older_settings_file_without_a_toggle_keeps_the_users_own_shortcuts()
+    {
+        var path = PathFor("old.json");
+        File.WriteAllText(path, """{ "StartHotkey": "Ctrl+Alt+F5", "StopHotkey": "Ctrl+Alt+F6" }""");
+        var result = SettingsStore.Load(path);
+        Assert.Null(result.Warning);
+        Assert.Equal("Ctrl+Alt+F5", result.Settings.StartHotkey);
+        Assert.Equal("Ctrl+Alt+F6", result.Settings.StopHotkey);
+        Assert.Equal("Ctrl+F3", result.Settings.ToggleHotkey);
+    }
+
+    [Fact]
+    public void Sound_and_theme_preferences_round_trip_and_bad_themes_are_replaced()
+    {
+        Assert.True(new AppSettings().SoundCues);
+        Assert.Equal("Auto", new AppSettings().Theme);
+
+        var path = PathFor("look.json");
+        SettingsStore.TrySave(path, new AppSettings { SoundCues = false, Theme = "Dark" });
+        var loaded = SettingsStore.Load(path).Settings;
+        Assert.False(loaded.SoundCues);
+        Assert.Equal("Dark", loaded.Theme);
+
+        File.WriteAllText(path, """{ "Theme": "Neon" }""");
+        var bad = SettingsStore.Load(path);
+        Assert.NotNull(bad.Warning);
+        Assert.Equal("Auto", bad.Settings.Theme);
     }
 
     [Fact]

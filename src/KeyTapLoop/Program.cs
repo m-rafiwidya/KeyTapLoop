@@ -1,3 +1,4 @@
+using KeyTapLoop.Core;
 using KeyTapLoop.Native;
 using KeyTapLoop.Ui;
 
@@ -9,6 +10,7 @@ internal static class Program
     private static void Main(string[] args)
     {
         ApplicationConfiguration.Initialize();
+        Theme.Choose(SettingsStore.Load(SettingsStore.DefaultPath).Settings.Theme);
 
         // One copy at a time: two copies would fight over the same global shortcuts.
         // A copy started by "Restart as administrator" waits briefly for the old one to close.

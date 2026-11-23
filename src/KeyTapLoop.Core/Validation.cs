@@ -18,6 +18,7 @@ public sealed class RunInput
     public string DelaySeconds { get; set; } = "";
     public KeyChord StartHotkey { get; set; }
     public KeyChord StopHotkey { get; set; }
+    public KeyChord ToggleHotkey { get; set; }
 }
 
 public sealed record ValidationResult(RunOptions? Options, IReadOnlyDictionary<Field, string> Errors)
@@ -50,7 +51,7 @@ public static class RunValidator
         {
             errors[Field.Output] = reserved + " Pick another key.";
         }
-        else if (output == input.StartHotkey || output == input.StopHotkey)
+        else if (output == input.StartHotkey || output == input.StopHotkey || output == input.ToggleHotkey)
         {
             errors[Field.Output] = $"{output} is one of KeyTapLoop’s own shortcuts. Pick another key or change the shortcut.";
         }
@@ -98,16 +99,16 @@ public static class RunValidator
         return new ValidationResult(options, errors);
     }
 
-    /// <summary>Checks the Start and Stop shortcuts. Returns null when both are acceptable.</summary>
-    public static string? ValidateHotkeys(KeyChord start, KeyChord stop)
+    /// <summary>Checks the Start, Stop and Toggle shortcuts. Returns null when all three are acceptable.</summary>
+    public static string? ValidateHotkeys(KeyChord start, KeyChord stop, KeyChord toggle)
     {
-        foreach (var (name, chord) in new[] { ("Start", start), ("Stop", stop) })
+        foreach (var (name, chord) in new[] { ("Start", start), ("Stop", stop), ("Toggle", toggle) })
         {
             if (!chord.HasModifier) return $"{name} needs Ctrl, Alt or Shift so it doesn’t swallow normal typing.";
             if (chord.VirtualKey is KeyCatalog.VkTab or KeyCatalog.VkEscape) return $"{name} can’t use Tab or Escape.";
             if (ReservedChords.IsReserved(chord, out var reason)) return $"{name}: {reason}";
         }
-        if (start == stop) return "Start and Stop need different shortcuts.";
+        if (start == stop || start == toggle || stop == toggle) return "Start, Stop and Toggle each need a different shortcut.";
         return null;
     }
 

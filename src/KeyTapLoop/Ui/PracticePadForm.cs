@@ -97,6 +97,14 @@ internal sealed class PracticePadForm : Form, IMessageFilter
 
     public void FocusTypingArea() => typed.Focus();
 
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        Theme.StyleWindow(this);
+        Theme.StyleNative(typed);
+        Theme.StyleNative(log);
+    }
+
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);

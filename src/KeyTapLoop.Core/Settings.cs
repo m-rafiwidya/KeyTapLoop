@@ -8,6 +8,7 @@ public sealed class AppSettings
 {
     public static readonly KeyChord DefaultStartHotkey = new(0x70, true, false, false); // Ctrl+F1
     public static readonly KeyChord DefaultStopHotkey = new(0x71, true, false, false);  // Ctrl+F2
+    public static readonly KeyChord DefaultToggleHotkey = new(0x72, true, false, false); // Ctrl+F3
 
     public int Version { get; set; } = 1;
     public string Output { get; set; } = "F";
@@ -24,12 +25,20 @@ public sealed class AppSettings
     public bool UseScanCodes { get; set; } = true;
     public string StartHotkey { get; set; } = DefaultStartHotkey.ToStorageString();
     public string StopHotkey { get; set; } = DefaultStopHotkey.ToStorageString();
+    public string ToggleHotkey { get; set; } = DefaultToggleHotkey.ToStorageString();
+
+    /// <summary>Short tones when a run starts, ends, or is cut short.</summary>
+    public bool SoundCues { get; set; } = true;
+
+    /// <summary>Auto follows the Windows light or dark setting.</summary>
+    public string Theme { get; set; } = "Auto";
 
     public AppSettings Clone() => (AppSettings)MemberwiseClone();
 
     [JsonIgnore] public KeyChord OutputChord => KeyChord.TryParse(Output, out var c) ? c : new KeyChord('F', false, false, false);
     [JsonIgnore] public KeyChord StartChord => KeyChord.TryParse(StartHotkey, out var c) ? c : DefaultStartHotkey;
     [JsonIgnore] public KeyChord StopChord => KeyChord.TryParse(StopHotkey, out var c) ? c : DefaultStopHotkey;
+    [JsonIgnore] public KeyChord ToggleChord => KeyChord.TryParse(ToggleHotkey, out var c) ? c : DefaultToggleHotkey;
     [JsonIgnore] public RunMode RunMode => Enum.TryParse<RunMode>(Mode, out var m) ? m : RunMode.Repeat;
 
     /// <summary>Returns a copy where every invalid field has been replaced by its default.
@@ -62,10 +71,21 @@ public sealed class AppSettings
         fixedSettings.DurationEnabled = DurationEnabled;
         fixedSettings.UseScanCodes = UseScanCodes;
 
+        fixedSettings.SoundCues = SoundCues;
+        if (Theme is "Auto" or "Light" or "Dark") fixedSettings.Theme = Theme; else changed = true;
+
         var hasStart = KeyChord.TryParse(StartHotkey, out var start);
         var hasStop = KeyChord.TryParse(StopHotkey, out var stop);
-        if (hasStart && hasStop && RunValidator.ValidateHotkeys(start, stop) is null)
+        var hasToggle = KeyChord.TryParse(ToggleHotkey, out var toggle);
+        if (hasStart && hasStop && hasToggle && RunValidator.ValidateHotkeys(start, stop, toggle) is null)
         {
+            fixedSettings.StartHotkey = start.ToStorageString();
+            fixedSettings.StopHotkey = stop.ToStorageString();
+            fixedSettings.ToggleHotkey = toggle.ToStorageString();
+        }
+        else if (!hasToggle && hasStart && hasStop && RunValidator.ValidateHotkeys(start, stop, AppSettings.DefaultToggleHotkey) is null)
+        {
+            // A settings file from before the toggle shortcut existed: keep the user's own Start and Stop.
             fixedSettings.StartHotkey = start.ToStorageString();
             fixedSettings.StopHotkey = stop.ToStorageString();
         }

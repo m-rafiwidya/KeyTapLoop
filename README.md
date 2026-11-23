@@ -10,7 +10,9 @@ It is a small, portable Windows app. No installer, no account, no network access
 - **Count and time limits.** Stop after a number of taps, after a number of seconds, or whichever comes first. Leave both off and it runs until you press Stop.
 - **One chosen window (the default).** Pick a target and the run is bound to that window and its process. Switching tabs inside the window is fine. Switching to a different window ends the run for good, even if you switch straight back. Starting again is always a deliberate click.
 - **Or any window.** Choose **Any window** and keys go to whichever window is in front, with no focus check. Switching windows won’t end the run, so use Stop or a limit. KeyTapLoop never types into its own window.
-- **Global shortcuts.** `Ctrl + F1` starts, `Ctrl + F2` stops, from anywhere. You can change both. The Start shortcut begins immediately, with no delay.
+- **Global shortcuts.** `Ctrl + F1` starts, `Ctrl + F2` stops and `Ctrl + F3` toggles (starts a run, or stops the one that is running), from anywhere. You can change all three. Shortcuts begin immediately, with no delay.
+- **Sound cues.** A short rising tone when a run starts, a falling tone when it finishes or you stop it, and a low double beep if something else ended it (focus moved, the target closed, input failed). Switch them off with the **Sounds** box.
+- **Light and dark.** The window follows your Windows light or dark setting by default. The **Theme** button cycles between Auto, Light and Dark.
 - **Clear results.** Every run ends with one of `Completed`, `Stopped by you`, `Stopped because focus changed`, `Target closed` or `Couldn’t send input`, with the elapsed time and the number of complete taps Windows accepted.
 - **A practice pad.** A built-in window that shows the key events it actually receives, so you can see for yourself that a key arrived.
 
@@ -26,7 +28,7 @@ Nothing runs on launch. KeyTapLoop always opens idle and remembers only your key
    The result should match the `.sha256` file on the release page. A hash confirms you got the file the release published. It is not a publisher signature.
 3. Run `KeyTapLoop.exe`. It is self-contained, so .NET does not need to be installed.
 
-The executable is not code-signed, so Windows SmartScreen may show a warning the first time. Choose **More info**, then **Run anyway**, if you trust the source. You can also build it yourself from this repository.
+The executable is not code-signed yet, so Windows SmartScreen may show a warning the first time. Choose **More info**, then **Run anyway**, if you trust the source. You can also build it yourself from this repository. Signing is planned: see [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md). Even once signed, a new app can show the warning for a while until Windows builds a reputation for it.
 
 Requires Windows 11 x64.
 
@@ -44,8 +46,9 @@ Requires Windows 11 x64.
 | --- | --- |
 | Start | `Ctrl + F1` |
 | Stop | `Ctrl + F2` |
+| Toggle (start or stop) | `Ctrl + F3` |
 
-Change them under **Shortcuts…**. Each needs Ctrl, Alt or Shift. A shortcut that another app already owns is reported, and your previous one stays active. The key you send can’t be one of these shortcuts.
+Change them under **Shortcuts…**. Each needs Ctrl, Alt or Shift, and all three must differ. A shortcut that another app already owns is reported, and your previous ones stay active. The key you send can’t be one of these shortcuts.
 
 ## How a run behaves
 

@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.Win32;
 using KeyTapLoop.Core;
 using KeyTapLoop.Native;
 
@@ -8,6 +9,7 @@ internal sealed class MainForm : Form
 {
     private const int StartHotkeyId = 1;
     private const int StopHotkeyId = 2;
+    private const int ToggleHotkeyId = 3;
     private const int LeftWidth = 360;
     private const int RightWidth = 300;
     private const int ColumnGap = 36;
@@ -22,20 +24,20 @@ internal sealed class MainForm : Form
     private readonly CheckBox ctrlToggle = new() { Text = "Ctrl", Size = new Size(52, 32), AccessibleName = "Ctrl modifier" };
     private readonly CheckBox altToggle = new() { Text = "Alt", Size = new Size(52, 32), AccessibleName = "Alt modifier" };
     private readonly CheckBox shiftToggle = new() { Text = "Shift", Size = new Size(56, 32), AccessibleName = "Shift modifier" };
-    private readonly ComboBox keyBox = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 98, FlatStyle = FlatStyle.Flat, AccessibleName = "Key" };
+    private readonly KeyPicker keyBox = new(98);
     private readonly CaptureButton captureButton = new("Capture") { Size = new Size(72, 32), AccessibleName = "Capture a key press" };
     private readonly Label outputPreview = Theme.Label("", muted: true, size: 9f);
     private readonly Label outputError = Theme.ErrorLabel(LeftWidth);
-    private readonly CheckBox scanCodeCheck = new() { Text = "Send as hardware scan codes (try this for games)", AutoSize = true, Checked = true, AccessibleName = "Send hardware scan codes. Games that read the keyboard directly usually need this." };
+    private readonly CheckRow scanCodeCheck = new() { Text = "Send as hardware scan codes (try this for games)", Checked = true, AccessibleName = "Send hardware scan codes. Games that read the keyboard directly usually need this." };
 
     // Mode and timing
     private readonly RadioButton repeatRadio = new() { Text = "Repeat", Checked = true, Size = new Size(96, 32), AccessibleName = "Repeat mode: tap the key again and again" };
     private readonly RadioButton holdRadio = new() { Text = "Hold", Size = new Size(96, 32), AccessibleName = "Hold mode: keep the key down" };
     private readonly TextField periodField = new(88, "Period in milliseconds, start to start");
     private readonly TextField keyDownField = new(88, "Key-down time in milliseconds");
-    private readonly CheckBox countCheck = new() { Text = "Stop after", AutoSize = true, Checked = true, AccessibleName = "Limit by tap count" };
+    private readonly CheckRow countCheck = new() { Text = "Stop after", Checked = true, AccessibleName = "Limit by tap count" };
     private readonly TextField countField = new(88, "Maximum number of taps");
-    private readonly CheckBox durationCheck = new() { Text = "Stop after", AutoSize = true, AccessibleName = "Limit by time" };
+    private readonly CheckRow durationCheck = new() { Text = "Stop after", AccessibleName = "Limit by time" };
     private readonly TextField durationField = new(88, "Time limit in seconds");
     private readonly TextField delayField = new(88, "Start delay in seconds");
     private readonly Label limitHint = Theme.Label("", muted: true, size: 9f);
@@ -60,12 +62,17 @@ internal sealed class MainForm : Form
     private readonly Label stateLabel = Theme.Label("Ready", size: 14f, style: FontStyle.Bold);
     private readonly Label detailLabel = Theme.Label("", muted: true, size: 9f);
     private readonly Label statsLabel = Theme.Label("", size: 9.5f);
+    private readonly Button themeButton = new() { AutoSize = true, MinimumSize = new Size(0, 28), AccessibleName = "Switch between automatic, light and dark appearance" };
+    private readonly CheckRow soundCheck = new() { Text = "Sounds", Checked = true, AccessibleName = "Play a short sound when a run starts and ends" };
+    private readonly SoundCues sounds = new();
     private readonly Button shortcutsButton = new() { Text = "Shortcuts…", AutoSize = true, MinimumSize = new Size(0, 28), AccessibleName = "Change the Start and Stop shortcuts" };
 
     // State
     private AppSettings lastValid;
     private KeyChord startHotkey;
     private KeyChord stopHotkey;
+    private KeyChord toggleHotkey;
+    private bool startCuePlayed;
     private TargetWindow? target;
     private PracticePadForm? pad;
     private RunSession? session;
@@ -85,6 +92,7 @@ internal sealed class MainForm : Form
         lastValid = loaded.Settings;
         startHotkey = lastValid.StartChord;
         stopHotkey = lastValid.StopChord;
+        toggleHotkey = lastValid.ToggleChord;
         if (loaded.Warning is not null) startupNotes.Add(loaded.Warning);
 
         Text = Elevation.IsElevated ? "KeyTapLoop (administrator)" : "KeyTapLoop";
@@ -105,7 +113,6 @@ internal sealed class MainForm : Form
         Controls.Add(BuildLayout());
         WireEvents();
 
-        keyBox.Items.AddRange(KeyCatalog.All.Cast<object>().ToArray());
         ApplySettings(lastValid);
         loading = false;
         UpdateModeState();
@@ -129,13 +136,9 @@ internal sealed class MainForm : Form
         Theme.StyleButton(startButton, primary: true);
         Theme.StyleButton(stopButton);
         Theme.StyleButton(shortcutsButton, quiet: true);
+        Theme.StyleButton(themeButton, quiet: true);
 
-        keyBox.BackColor = Theme.Surface;
-        keyBox.ForeColor = Theme.Text;
-        keyBox.Font = Theme.Body();
-        keyBox.MaxDropDownItems = 12;
-
-        foreach (var c in new[] { countCheck, durationCheck, scanCodeCheck })
+        foreach (var c in new[] { countCheck, durationCheck, scanCodeCheck, soundCheck })
         {
             c.ForeColor = Theme.Text;
             c.BackColor = Color.Transparent;
@@ -211,9 +214,13 @@ internal sealed class MainForm : Form
         // Footer
         var footer = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = new Padding(0, 18, 0, 0) };
         shortcutsButton.Margin = new Padding(-8, 0, 0, 0);
-        var version = Theme.Label($"v{typeof(MainForm).Assembly.GetName().Version?.ToString(3) ?? "0.1.0"}  ·  free and open source  ·  no network, no telemetry{(Elevation.IsElevated ? "  ·  administrator" : "")}", muted: true, size: 8.5f);
-        version.Margin = new Padding(14, 7, 0, 0);
+        themeButton.Margin = new Padding(4, 0, 0, 0);
+        soundCheck.Margin = new Padding(14, 3, 0, 0);
+        var version = Theme.Label($"v{typeof(MainForm).Assembly.GetName().Version?.ToString(3) ?? "0.1.0"}  ·  open source  ·  no network, no telemetry{(Elevation.IsElevated ? "  ·  administrator" : "")}", muted: true, size: 8.5f);
+        version.Margin = new Padding(18, 7, 0, 0);
         footer.Controls.Add(shortcutsButton);
+        footer.Controls.Add(themeButton);
+        footer.Controls.Add(soundCheck);
         footer.Controls.Add(version);
         root.Controls.Add(footer, 0, 2);
         root.SetColumnSpan(footer, 3);
@@ -250,7 +257,7 @@ internal sealed class MainForm : Form
         ctrlToggle.Margin = new Padding(0, 0, 4, 0);
         altToggle.Margin = new Padding(0, 0, 4, 0);
         shiftToggle.Margin = new Padding(0, 0, 10, 0);
-        keyBox.Margin = new Padding(0, 4, 6, 0);
+        keyBox.Margin = new Padding(0, 0, 6, 0);
         row.Controls.AddRange(new Control[] { ctrlToggle, altToggle, shiftToggle, keyBox, captureButton });
 
         outputPreview.Margin = new Padding(0, 8, 0, 0);
@@ -400,9 +407,17 @@ internal sealed class MainForm : Form
         captureButton.Captured += chord => { SetOutput(chord); };
         pickButton.Click += (_, _) => BeginPickTarget();
         padButton.Click += (_, _) => UsePracticePad();
-        startButton.Click += (_, _) => StartRun(fromHotkey: false);
+        startButton.Click += (_, _) => StartRun(null);
         stopButton.Click += (_, _) => StopRun();
         shortcutsButton.Click += (_, _) => EditShortcuts();
+        themeButton.Click += (_, _) => CycleTheme();
+        soundCheck.CheckedChanged += (_, _) =>
+        {
+            sounds.Enabled = soundCheck.Checked;
+            if (loading) return;
+            lastValid.SoundCues = soundCheck.Checked;
+            if (soundCheck.Checked) sounds.Play(Cue.Start);   // a preview, so you can hear what you turned on
+        };
 
         uiTimer.Tick += (_, _) => ShowProgress();
         pickTimer.Tick += (_, _) => OnPickTick();
@@ -496,6 +511,7 @@ internal sealed class MainForm : Form
             DelaySeconds = delayField.Text,
             StartHotkey = startHotkey,
             StopHotkey = stopHotkey,
+            ToggleHotkey = toggleHotkey,
         };
     }
 
@@ -541,6 +557,7 @@ internal sealed class MainForm : Form
         s.UseScanCodes = scanCodeCheck.Checked;
         s.StartHotkey = startHotkey.ToStorageString();
         s.StopHotkey = stopHotkey.ToStorageString();
+        s.ToggleHotkey = toggleHotkey.ToStorageString();
         if (options.Mode == RunMode.Repeat)
         {
             s.PeriodMs = options.PeriodMs;
@@ -570,6 +587,8 @@ internal sealed class MainForm : Form
         durationField.Text = (s.DurationMs / 1000.0).ToString("0.###", CultureInfo.InvariantCulture);
         delayField.Text = s.StartDelaySeconds.ToString(CultureInfo.InvariantCulture);
         scanCodeCheck.Checked = s.UseScanCodes;
+        soundCheck.Checked = s.SoundCues;
+        sounds.Enabled = s.SoundCues;
         (s.RunMode == RunMode.Hold ? holdRadio : repeatRadio).Checked = true;
         loading = wasLoading;
     }
@@ -580,6 +599,7 @@ internal sealed class MainForm : Form
         stopButton.Text = $"Stop   {stopHotkey}";
         startButton.AccessibleName = $"Start. Shortcut {startHotkey}.";
         stopButton.AccessibleName = $"Stop. Shortcut {stopHotkey}.";
+        themeButton.Text = $"Theme: {lastValid.Theme}";
     }
 
     // ===================================================================================
@@ -699,8 +719,9 @@ internal sealed class MainForm : Form
     //  Running
     // ===================================================================================
 
-    private void StartRun(bool fromHotkey)
+    private void StartRun(KeyChord? viaHotkey)
     {
+        var fromHotkey = viaHotkey.HasValue;
         if (session is not null) { SetNotice("A run is already active. Stop it first."); return; }
         if (picking) { SetNotice("Finish choosing a window first."); return; }
 
@@ -738,12 +759,12 @@ internal sealed class MainForm : Form
             SetNotice(any
                 ? "KeyTapLoop is in front, so there is nowhere to send keys. Set a start delay and switch to your window, or start with the shortcut from that window."
                 : fromHotkey
-                    ? $"{startHotkey} only starts a run while the chosen window is in front. Click that window first."
+                    ? $"{viaHotkey} only starts a run while the chosen window is in front. Click that window first."
                     : "The chosen window isn\u2019t in front. Set a start delay, press Start, then switch to it before the countdown ends.");
             return;
         }
 
-        options = options with { ReleaseBeforeStart = fromHotkey ? startHotkey.WatchedKeys() : Array.Empty<int>() };
+        options = options with { ReleaseBeforeStart = viaHotkey?.WatchedKeys() ?? Array.Empty<int>() };
 
         SettingsStore.TrySave(settingsPath, lastValid);
         if (runTarget is { IsPracticePad: true }) pad?.ResetCounters();
@@ -753,6 +774,7 @@ internal sealed class MainForm : Form
         activeOptions = options;
         lastRunWasHold = options.Mode == RunMode.Hold;
         runIsAnyWindow = any;
+        startCuePlayed = false;
         busy = true;
         UpdateModeState();
         SetRunButtons(running: true);
@@ -805,6 +827,7 @@ internal sealed class MainForm : Form
             target = null;
             UpdateTargetLabel();
         }
+        sounds.Play(result.Reason is EndReason.Completed or EndReason.StoppedByUser ? Cue.Stop : Cue.Alert);
         ShowResult(result, runTarget);
     }
 
@@ -836,7 +859,7 @@ internal sealed class MainForm : Form
     {
         stateLabel.Text = "Ready";
         stateLabel.ForeColor = Theme.Text;
-        detailLabel.Text = "Pick where the keys go, set the key, then press Start.";
+        detailLabel.Text = $"Pick where the keys go, set the key, then press Start. {toggleHotkey} starts or stops from anywhere.";
         statsLabel.Text = "";
     }
 
@@ -860,6 +883,7 @@ internal sealed class MainForm : Form
             case RunPhase.Ended:
                 return; // the final result is about to replace this
             default:
+                if (!startCuePlayed) { startCuePlayed = true; sounds.Play(Cue.Start); }
                 stateLabel.Text = lastRunWasHold ? "Holding" : "Running";
                 stateLabel.ForeColor = Theme.Accent;
                 detailLabel.Text = "Switching windows ends the run.";
@@ -929,35 +953,41 @@ internal sealed class MainForm : Form
     private void EditShortcuts()
     {
         if (busy) { SetNotice("Stop the current run before changing shortcuts."); return; }
-        using var dialog = new ShortcutsForm(startHotkey, stopHotkey);
+        using var dialog = new ShortcutsForm(startHotkey, stopHotkey, toggleHotkey);
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
 
-        var oldStart = startHotkey;
-        var oldStop = stopHotkey;
+        var (oldStart, oldStop, oldToggle) = (startHotkey, stopHotkey, toggleHotkey);
         UnregisterHotkeys();
-        var problems = RegisterHotkeys(dialog.Start, dialog.Stop);
+        var problems = RegisterHotkeys(dialog.Start, dialog.Stop, dialog.Toggle);
         if (problems.Count == 0)
         {
-            startHotkey = dialog.Start;
-            stopHotkey = dialog.Stop;
+            (startHotkey, stopHotkey, toggleHotkey) = (dialog.Start, dialog.Stop, dialog.Toggle);
             SetNotice(null);
         }
         else
         {
             UnregisterHotkeys();
-            RegisterHotkeys(oldStart, oldStop);
+            RegisterHotkeys(oldStart, oldStop, oldToggle);
             SetNotice(string.Join(" ", problems) + " Your previous shortcuts are still active.");
         }
         UpdateButtonLabels();
+        ShowIdleIfQuiet();
         Revalidate();
         SettingsStore.TrySave(settingsPath, lastValid);
     }
 
-    private List<string> RegisterHotkeys(KeyChord start, KeyChord stop)
+    /// <summary>Refreshes the idle hint without overwriting a finished run's result.</summary>
+    private void ShowIdleIfQuiet()
+    {
+        if (session is null && stateLabel.Text == "Ready") ShowIdle();
+    }
+
+    private List<string> RegisterHotkeys(KeyChord start, KeyChord stop, KeyChord toggle)
     {
         var problems = new List<string>();
         if (!Hotkeys.TryRegister(Handle, StartHotkeyId, start, out var startError)) problems.Add(startError);
         if (!Hotkeys.TryRegister(Handle, StopHotkeyId, stop, out var stopError)) problems.Add(stopError);
+        if (!Hotkeys.TryRegister(Handle, ToggleHotkeyId, toggle, out var toggleError)) problems.Add(toggleError);
         return problems;
     }
 
@@ -966,6 +996,35 @@ internal sealed class MainForm : Form
         if (!IsHandleCreated) return;
         Hotkeys.Unregister(Handle, StartHotkeyId);
         Hotkeys.Unregister(Handle, StopHotkeyId);
+        Hotkeys.Unregister(Handle, ToggleHotkeyId);
+    }
+
+    // ===================================================================================
+    //  Appearance
+    // ===================================================================================
+
+    private void CycleTheme()
+    {
+        lastValid.Theme = lastValid.Theme switch { "Auto" => "Light", "Light" => "Dark", _ => "Auto" };
+        ApplyTheme();
+        UpdateButtonLabels();
+        SettingsStore.TrySave(settingsPath, lastValid);
+    }
+
+    /// <summary>Recolours this window and the practice pad to match the chosen theme, without restarting anything.</summary>
+    private void ApplyTheme()
+    {
+        var windows = pad is { IsDisposed: false } ? new Control[] { this, pad } : new Control[] { this };
+        Theme.Switch(Theme.For(lastValid.Theme), windows);
+        // The key picker's open list and result card paint from the live palette, so a repaint is enough.
+        Invalidate(true);
+    }
+
+    private void OnSystemPreferenceChanged(object? sender, UserPreferenceChangedEventArgs e)
+    {
+        if (e.Category is not (UserPreferenceCategory.General or UserPreferenceCategory.Color or UserPreferenceCategory.VisualStyle)) return;
+        if (lastValid.Theme != "Auto" || IsDisposed) return;
+        BeginInvoke(ApplyTheme); // this event arrives on another thread
     }
 
     // ===================================================================================
@@ -975,7 +1034,9 @@ internal sealed class MainForm : Form
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        foreach (var problem in RegisterHotkeys(startHotkey, stopHotkey))
+        Theme.StyleWindow(this);
+        SystemEvents.UserPreferenceChanged += OnSystemPreferenceChanged;
+        foreach (var problem in RegisterHotkeys(startHotkey, stopHotkey, toggleHotkey))
             startupNotes.Add(problem + " Use the on-screen buttons or pick another shortcut.");
         if (startupNotes.Count > 0) SetNotice(string.Join(" ", startupNotes));
     }
@@ -987,8 +1048,11 @@ internal sealed class MainForm : Form
             if (captureButton.Listening) return;
             switch (m.WParam.ToInt32())
             {
-                case StartHotkeyId: StartRun(fromHotkey: true); break;
+                case StartHotkeyId: StartRun(startHotkey); break;
                 case StopHotkeyId: StopRun(); break;
+                case ToggleHotkeyId:
+                    if (session is not null || picking) StopRun(); else StartRun(toggleHotkey);
+                    break;
             }
             return;
         }
@@ -1004,10 +1068,12 @@ internal sealed class MainForm : Form
         session?.Stop();
         try { runTask?.Wait(1500); } catch (AggregateException) { }
 
+        SystemEvents.UserPreferenceChanged -= OnSystemPreferenceChanged;
         pickTimer.Stop();
         uiTimer.Stop();
         UnregisterHotkeys();
         watcher.Dispose();
+        sounds.Dispose();
         if (pad is { IsDisposed: false }) pad.Close();
     }
 }

@@ -15,10 +15,45 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+
       - name: Test
         run: dotnet test -c Release
-      - name: Publish portable build
-        run: ./scripts/publish.ps1
+
+      - name: Build executable
+        run: ./scripts/publish.ps1 -NoPackage
+
+      - name: Upload unsigned executable
+        id: unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: KeyTapLoop-unsigned
+          path: artifacts/KeyTapLoop/KeyTapLoop.exe
+
+      # Signing only runs once code signing has been set up (see docs/CODE_SIGNING.md).
+      # Until the repository variable SIGNPATH_ORGANIZATION_ID exists, releases are unsigned.
+      - name: Sign with SignPath
+        if: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: keytaploop
+          signing-policy-slug: release-signing
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $exe = 'artifacts/KeyTapLoop/KeyTapLoop.exe'
+          if (Test-Path signed) {
+            $found = Get-ChildItem signed -Recurse -Filter KeyTapLoop.exe | Select-Object -First 1
+            if (-not $found) { throw 'Signing finished but no signed KeyTapLoop.exe was returned.' }
+            $exe = $found.FullName
+          }
+          ./scripts/package.ps1 -ExePath $exe
+
       - name: Create release
         shell: bash
         env:
