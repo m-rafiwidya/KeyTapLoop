@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/KeyTapLoop.Core/KeyTapLoop.Core.csproj" />
+    <Project Path="src/KeyTapLoop/KeyTapLoop.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/KeyTapLoop.Core.Tests/KeyTapLoop.Core.Tests.csproj" />
+  </Folder>
+</Solution>
