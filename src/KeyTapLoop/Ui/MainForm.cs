@@ -26,6 +26,7 @@ internal sealed class MainForm : Form
     private readonly CaptureButton captureButton = new("Capture") { Size = new Size(72, 32), AccessibleName = "Capture a key press" };
     private readonly Label outputPreview = Theme.Label("", muted: true, size: 9f);
     private readonly Label outputError = Theme.ErrorLabel(LeftWidth);
+    private readonly CheckBox scanCodeCheck = new() { Text = "Send as hardware scan codes (try this for games)", AutoSize = true, Checked = true, AccessibleName = "Send hardware scan codes. Games that read the keyboard directly usually need this." };
 
     // Mode and timing
     private readonly RadioButton repeatRadio = new() { Text = "Repeat", Checked = true, Size = new Size(96, 32), AccessibleName = "Repeat mode: tap the key again and again" };
@@ -37,10 +38,16 @@ internal sealed class MainForm : Form
     private readonly CheckBox durationCheck = new() { Text = "Stop after", AutoSize = true, AccessibleName = "Limit by time" };
     private readonly TextField durationField = new(88, "Time limit in seconds");
     private readonly TextField delayField = new(88, "Start delay in seconds");
+    private readonly Label limitHint = Theme.Label("", muted: true, size: 9f);
     private readonly Dictionary<Field, Label> fieldErrors = new();
     private readonly Dictionary<Field, TextField> fieldBoxes = new();
 
     // Target
+    private readonly RadioButton chosenRadio = new() { Text = "Chosen window", Checked = true, Size = new Size(132, 32), AccessibleName = "Send keys to one chosen window only" };
+    private readonly RadioButton anyRadio = new() { Text = "Any window", Size = new Size(112, 32), AccessibleName = "Send keys to whichever window is in front" };
+    private readonly FlowLayoutPanel chosenPanel = new() { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = Padding.Empty };
+    private readonly Label anyWindowNote = Theme.Label("", size: 8.75f);
+    private readonly Button adminButton = new() { Text = "Restart as administrator", Size = new Size(184, 32), AccessibleName = "Restart KeyTapLoop as administrator so it can send keys to an administrator window" };
     private readonly Button pickButton = new() { Text = "Choose window", Size = new Size(124, 34), AccessibleName = "Choose the target window. Counts down three seconds, then uses the window in front." };
     private readonly Button padButton = new() { Text = "Use practice pad", AutoSize = true, MinimumSize = new Size(0, 30), AccessibleName = "Use the built-in practice pad as the target" };
     private readonly Label targetLabel = Theme.Label("No window chosen", muted: true);
@@ -68,6 +75,7 @@ internal sealed class MainForm : Form
     private bool picking;
     private int pickLeft;
     private bool lastRunWasHold;
+    private bool runIsAnyWindow;
     private RunOptions? activeOptions;
     private readonly List<string> startupNotes = new();
 
@@ -79,7 +87,7 @@ internal sealed class MainForm : Form
         stopHotkey = lastValid.StopChord;
         if (loaded.Warning is not null) startupNotes.Add(loaded.Warning);
 
-        Text = "KeyTapLoop";
+        Text = Elevation.IsElevated ? "KeyTapLoop (administrator)" : "KeyTapLoop";
         AutoScaleMode = AutoScaleMode.Dpi;
         AutoScaleDimensions = new SizeF(96f, 96f);
         BackColor = Theme.Background;
@@ -114,8 +122,9 @@ internal sealed class MainForm : Form
     private void StyleInputs()
     {
         foreach (var t in new[] { ctrlToggle, altToggle, shiftToggle }) Theme.StyleToggle(t);
-        foreach (var r in new[] { repeatRadio, holdRadio }) Theme.StyleToggle(r);
+        foreach (var r in new[] { repeatRadio, holdRadio, chosenRadio, anyRadio }) Theme.StyleToggle(r);
         Theme.StyleButton(pickButton);
+        Theme.StyleButton(adminButton);
         Theme.StyleButton(padButton, quiet: true);
         Theme.StyleButton(startButton, primary: true);
         Theme.StyleButton(stopButton);
@@ -126,7 +135,7 @@ internal sealed class MainForm : Form
         keyBox.Font = Theme.Body();
         keyBox.MaxDropDownItems = 12;
 
-        foreach (var c in new[] { countCheck, durationCheck })
+        foreach (var c in new[] { countCheck, durationCheck, scanCodeCheck })
         {
             c.ForeColor = Theme.Text;
             c.BackColor = Color.Transparent;
@@ -138,6 +147,17 @@ internal sealed class MainForm : Form
         targetWarning.MaximumSize = new Size(RightWidth, 0);
         targetWarning.Margin = new Padding(0, 8, 0, 0);
         targetWarning.Visible = false;
+
+        adminButton.Margin = new Padding(0, 10, 0, 0);
+        adminButton.Visible = false;
+
+        anyWindowNote.ForeColor = Theme.Warn;
+        anyWindowNote.MaximumSize = new Size(RightWidth, 0);
+        anyWindowNote.Margin = new Padding(0, 12, 0, 0);
+        anyWindowNote.Visible = false;
+
+        limitHint.MaximumSize = new Size(LeftWidth, 0);
+        limitHint.Margin = new Padding(0, 2, 0, 0);
 
         targetLabel.MaximumSize = new Size(RightWidth - 134, 0);
         targetLabel.Margin = new Padding(12, 0, 0, 0);
@@ -164,10 +184,10 @@ internal sealed class MainForm : Form
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, RightWidth));
 
         // Header
-        var header = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0, 0, 0, 22) };
+        var header = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0, 0, 0, 6) };
         var title = Theme.Label("KeyTapLoop", size: 18f, style: FontStyle.Bold);
-        var tagline = Theme.Label("Repeat or hold a key in one window. It stops the moment focus moves.", muted: true, size: 9.5f);
-        tagline.Margin = new Padding(0, 2, 0, 0);
+        var tagline = Theme.Label("Repeat or hold a key. By default it stops the moment focus leaves your chosen window.", muted: true, size: 9.5f);
+        tagline.Margin = new Padding(0, 8, 0, 0);
         header.Controls.Add(title);
         header.Controls.Add(tagline);
         root.Controls.Add(header, 0, 0);
@@ -191,7 +211,7 @@ internal sealed class MainForm : Form
         // Footer
         var footer = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = new Padding(0, 18, 0, 0) };
         shortcutsButton.Margin = new Padding(-8, 0, 0, 0);
-        var version = Theme.Label($"v{typeof(MainForm).Assembly.GetName().Version?.ToString(3) ?? "0.1.0"}  ·  free and open source  ·  no network, no telemetry", muted: true, size: 8.5f);
+        var version = Theme.Label($"v{typeof(MainForm).Assembly.GetName().Version?.ToString(3) ?? "0.1.0"}  ·  free and open source  ·  no network, no telemetry{(Elevation.IsElevated ? "  ·  administrator" : "")}", muted: true, size: 8.5f);
         version.Margin = new Padding(14, 7, 0, 0);
         footer.Controls.Add(shortcutsButton);
         footer.Controls.Add(version);
@@ -235,8 +255,10 @@ internal sealed class MainForm : Form
 
         outputPreview.Margin = new Padding(0, 8, 0, 0);
         wrap.Controls.Add(row);
+        scanCodeCheck.Margin = new Padding(0, 10, 0, 0);
         wrap.Controls.Add(outputPreview);
         wrap.Controls.Add(outputError);
+        wrap.Controls.Add(scanCodeCheck);
         return wrap;
     }
 
@@ -283,22 +305,36 @@ internal sealed class MainForm : Form
         Add(Theme.Label("Key down for"), keyDownField, "ms per tap", Field.KeyDown);
         Add(countCheck, countField, "taps", Field.Count);
         Add(durationCheck, durationField, "seconds", Field.Duration);
-        Add(Theme.Label("Start delay"), delayField, "seconds before start", Field.Delay);
-        return grid;
+        Add(Theme.Label("Start delay"), delayField, "seconds, Start button only", Field.Delay);
+
+        var wrap = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        wrap.Controls.Add(grid);
+        wrap.Controls.Add(limitHint);
+        return wrap;
     }
 
     private Control BuildTargetBlock()
     {
         var wrap = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
 
+        var mode = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = new Padding(0, 0, 0, 12) };
+        chosenRadio.Margin = new Padding(0, 0, 4, 0);
+        mode.Controls.Add(chosenRadio);
+        mode.Controls.Add(anyRadio);
+
         var row = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
         row.Controls.Add(pickButton);
         row.Controls.Add(targetLabel);
 
         padButton.Margin = new Padding(-8, 6, 0, 0);
-        wrap.Controls.Add(row);
-        wrap.Controls.Add(padButton);
-        wrap.Controls.Add(targetWarning);
+        chosenPanel.Controls.Add(row);
+        chosenPanel.Controls.Add(padButton);
+        chosenPanel.Controls.Add(targetWarning);
+        chosenPanel.Controls.Add(adminButton);
+
+        wrap.Controls.Add(mode);
+        wrap.Controls.Add(chosenPanel);
+        wrap.Controls.Add(anyWindowNote);
         return wrap;
     }
 
@@ -350,6 +386,10 @@ internal sealed class MainForm : Form
     {
         foreach (var t in new[] { ctrlToggle, altToggle, shiftToggle }) t.CheckedChanged += (_, _) => OnInputChanged();
         keyBox.SelectedIndexChanged += (_, _) => OnInputChanged();
+        scanCodeCheck.CheckedChanged += (_, _) => OnInputChanged();
+        chosenRadio.CheckedChanged += (_, _) => UpdateTargetMode();
+        anyRadio.CheckedChanged += (_, _) => UpdateTargetMode();
+        adminButton.Click += (_, _) => RestartAsAdministrator();
         repeatRadio.CheckedChanged += (_, _) => OnModeChanged();
         holdRadio.CheckedChanged += (_, _) => OnModeChanged();
         countCheck.CheckedChanged += (_, _) => OnModeChanged();
@@ -368,7 +408,9 @@ internal sealed class MainForm : Form
         pickTimer.Tick += (_, _) => OnPickTick();
         watcher.Changed += hwnd =>
         {
-            if (session is not null && target is not null) session.OnForegroundChanged(hwnd == target.Handle);
+            if (session is null) return;
+            if (runIsAnyWindow) session.OnForegroundChanged(hwnd != Handle);   // only KeyTapLoop itself coming forward ends it
+            else if (target is not null) session.OnForegroundChanged(hwnd == target.Handle);
         };
     }
 
@@ -395,20 +437,44 @@ internal sealed class MainForm : Form
         try
         {
             var hold = holdRadio.Checked;
-            if (hold) durationCheck.Checked = true; // a held key always needs a time limit
 
             periodField.Enabled = !hold && !busy;
             keyDownField.Enabled = !hold && !busy;
             countCheck.Enabled = !hold && !busy;
             countField.Enabled = !hold && countCheck.Checked && !busy;
-            durationCheck.Enabled = !hold && !busy;
-            durationField.Enabled = (hold || durationCheck.Checked) && !busy;
+            durationCheck.Enabled = !busy;
+            durationField.Enabled = durationCheck.Checked && !busy;
             delayField.Enabled = !busy;
 
-            foreach (var c in new Control[] { ctrlToggle, altToggle, shiftToggle, keyBox, captureButton, repeatRadio, holdRadio })
+            foreach (var c in new Control[] { ctrlToggle, altToggle, shiftToggle, keyBox, captureButton, repeatRadio, holdRadio, scanCodeCheck, chosenRadio, anyRadio })
                 c.Enabled = !busy;
+
+            UpdateLimitHint();
         }
         finally { updatingState = false; }
+    }
+
+    /// <summary>Says plainly what happens when no limit is set, instead of treating it as a mistake.</summary>
+    private void UpdateLimitHint()
+    {
+        var hold = holdRadio.Checked;
+        var noLimit = hold ? !durationCheck.Checked : !countCheck.Checked && !durationCheck.Checked;
+        var end = anyRadio.Checked ? "you press Stop" : "you press Stop or focus leaves the window";
+        limitHint.Text = !noLimit ? "" : hold
+            ? $"No time limit. The key stays down until {end}."
+            : $"No limit. It keeps going until {end}.";
+        limitHint.Visible = noLimit;
+    }
+
+    private void UpdateTargetMode()
+    {
+        if (loading || updatingState) return;
+        var any = anyRadio.Checked;
+        chosenPanel.Visible = !any;
+        anyWindowNote.Visible = any;
+        anyWindowNote.Text = "Keys go to whichever window is in front, and switching windows won\u2019t end the run. Use Stop, or a limit, to end it.";
+        SetNotice(null);
+        UpdateLimitHint();
     }
 
     private RunInput ReadInput()
@@ -472,6 +538,7 @@ internal sealed class MainForm : Form
         s.Output = options.Output.ToStorageString();
         s.Mode = options.Mode.ToString();
         s.StartDelaySeconds = options.StartDelayMs / 1000;
+        s.UseScanCodes = scanCodeCheck.Checked;
         s.StartHotkey = startHotkey.ToStorageString();
         s.StopHotkey = stopHotkey.ToStorageString();
         if (options.Mode == RunMode.Repeat)
@@ -502,6 +569,7 @@ internal sealed class MainForm : Form
         durationCheck.Checked = s.DurationEnabled;
         durationField.Text = (s.DurationMs / 1000.0).ToString("0.###", CultureInfo.InvariantCulture);
         delayField.Text = s.StartDelaySeconds.ToString(CultureInfo.InvariantCulture);
+        scanCodeCheck.Checked = s.UseScanCodes;
         (s.RunMode == RunMode.Hold ? holdRadio : repeatRadio).Checked = true;
         loading = wasLoading;
     }
@@ -617,12 +685,14 @@ internal sealed class MainForm : Form
             targetLabel.Text = "No window chosen";
             targetLabel.ForeColor = Theme.Muted;
             targetWarning.Visible = false;
+            adminButton.Visible = false;
             return;
         }
         targetLabel.Text = target.Display;
         targetLabel.ForeColor = Theme.Text;
-        targetWarning.Text = "This window may run with higher privileges. Windows can silently ignore keys sent to it.";
+        targetWarning.Text = "This app probably runs as administrator. Windows silently blocks keys from a normal KeyTapLoop, even though it reports them as sent.";
         targetWarning.Visible = target.MayBeElevated;
+        adminButton.Visible = target.MayBeElevated && !Elevation.IsElevated;
     }
 
     // ===================================================================================
@@ -637,45 +707,58 @@ internal sealed class MainForm : Form
         var validation = Revalidate();
         if (!validation.IsValid) { SetNotice("Fix the highlighted fields, then start again."); return; }
         var options = validation.Options!;
+        var any = anyRadio.Checked;
 
-        if (target is null) { SetNotice("Choose a target window first."); return; }
-        if (!target.IsAlive())
+        if (!any)
         {
-            target = null;
-            UpdateTargetLabel();
-            SetNotice("That window has closed. Choose a target again.");
-            return;
+            if (target is null) { SetNotice("Choose a target window first, or switch to Any window."); return; }
+            if (!target.IsAlive())
+            {
+                target = null;
+                UpdateTargetLabel();
+                SetNotice("That window has closed. Choose a target again.");
+                return;
+            }
+
+            if (target.IsPracticePad && pad is { IsDisposed: false })
+            {
+                if (pad.WindowState == FormWindowState.Minimized) pad.WindowState = FormWindowState.Normal;
+                if (!fromHotkey) { pad.Activate(); pad.FocusTypingArea(); }
+            }
         }
 
-        if (target.IsPracticePad && pad is { IsDisposed: false })
-        {
-            if (pad.WindowState == FormWindowState.Minimized) pad.WindowState = FormWindowState.Normal;
-            if (!fromHotkey) { pad.Activate(); pad.FocusTypingArea(); }
-        }
+        // The shortcut starts at once, because you are already in the right window. The delay is for the
+        // Start button, which leaves KeyTapLoop in front until you switch away.
+        if (fromHotkey) options = options with { StartDelayMs = 0 };
 
-        if (!target.IsForeground() && (fromHotkey || options.StartDelayMs == 0))
+        var runTarget = any ? null : target;
+        var host = new WindowsRunHost(runTarget, Handle, lastValid.UseScanCodes);
+        if (!host.IsTargetForeground() && options.StartDelayMs == 0)
         {
-            SetNotice(fromHotkey
-                ? $"{startHotkey} only starts a run while the chosen window is in front. Click that window first."
-                : "The chosen window isn’t in front. Set a start delay, press Start, then switch to it before the countdown ends.");
+            SetNotice(any
+                ? "KeyTapLoop is in front, so there is nowhere to send keys. Set a start delay and switch to your window, or start with the shortcut from that window."
+                : fromHotkey
+                    ? $"{startHotkey} only starts a run while the chosen window is in front. Click that window first."
+                    : "The chosen window isn\u2019t in front. Set a start delay, press Start, then switch to it before the countdown ends.");
             return;
         }
 
         options = options with { ReleaseBeforeStart = fromHotkey ? startHotkey.WatchedKeys() : Array.Empty<int>() };
 
         SettingsStore.TrySave(settingsPath, lastValid);
-        if (target.IsPracticePad) pad?.ResetCounters();
+        if (runTarget is { IsPracticePad: true }) pad?.ResetCounters();
 
-        var runTarget = target;
-        var newSession = new RunSession(options, new WindowsRunHost(runTarget), clock);
+        var newSession = new RunSession(options, host, clock);
         session = newSession;
         activeOptions = options;
         lastRunWasHold = options.Mode == RunMode.Hold;
+        runIsAnyWindow = any;
         busy = true;
         UpdateModeState();
         SetRunButtons(running: true);
         pickButton.Enabled = false;
         padButton.Enabled = false;
+        adminButton.Enabled = false;
         SetNotice(null);
         uiTimer.Start();
         ShowProgress();
@@ -685,7 +768,7 @@ internal sealed class MainForm : Form
         AwaitRun(newSession, runTask, runTarget);
     }
 
-    private async void AwaitRun(RunSession s, Task<RunResult> task, TargetWindow runTarget)
+    private async void AwaitRun(RunSession s, Task<RunResult> task, TargetWindow? runTarget)
     {
         RunResult result;
         try
@@ -700,12 +783,12 @@ internal sealed class MainForm : Form
         NativeMethods.timeEndPeriod(1);
 
         // Key messages are delivered after posted messages, so give the pad a moment to process the last ones.
-        if (runTarget.IsPracticePad) await Task.Delay(200);
+        if (runTarget is { IsPracticePad: true }) await Task.Delay(200);
         if (IsDisposed) return;
         FinishRun(result, runTarget);
     }
 
-    private void FinishRun(RunResult result, TargetWindow runTarget)
+    private void FinishRun(RunResult result, TargetWindow? runTarget)
     {
         uiTimer.Stop();
         session = null;
@@ -715,13 +798,22 @@ internal sealed class MainForm : Form
         SetRunButtons(running: false);
         pickButton.Enabled = !picking;
         padButton.Enabled = true;
+        adminButton.Enabled = true;
 
-        if (result.Reason == EndReason.TargetClosed)
+        if (result.Reason == EndReason.TargetClosed && runTarget is not null)
         {
             target = null;
             UpdateTargetLabel();
         }
         ShowResult(result, runTarget);
+    }
+
+    private void RestartAsAdministrator()
+    {
+        if (busy) { SetNotice("Stop the current run before restarting."); return; }
+        SettingsStore.TrySave(settingsPath, lastValid);
+        if (Elevation.TryRestartElevated(out var error)) Close();
+        else SetNotice(error);
     }
 
     private void StopRun()
@@ -744,7 +836,7 @@ internal sealed class MainForm : Form
     {
         stateLabel.Text = "Ready";
         stateLabel.ForeColor = Theme.Text;
-        detailLabel.Text = "Choose a target, set the key, then press Start.";
+        detailLabel.Text = "Pick where the keys go, set the key, then press Start.";
         statsLabel.Text = "";
     }
 
@@ -779,12 +871,13 @@ internal sealed class MainForm : Form
     private string ProgressText(RunSession s)
     {
         var elapsed = FormatSeconds(s.ElapsedMs);
-        if (activeOptions is { Mode: RunMode.Hold, DurationMs: { } holdMs }) return $"{elapsed} of {FormatSeconds(holdMs)}";
+        if (activeOptions is { Mode: RunMode.Hold })
+            return activeOptions.DurationMs is { } holdMs ? $"{elapsed} of {FormatSeconds(holdMs)}" : elapsed;
         var taps = activeOptions?.MaxTaps is { } max ? $"{s.Taps} of {max} taps" : $"{s.Taps} taps";
         return activeOptions?.DurationMs is { } ms ? $"{taps}  ·  {elapsed} of {FormatSeconds(ms)}" : $"{taps}  ·  {elapsed}";
     }
 
-    private void ShowResult(RunResult result, TargetWindow runTarget)
+    private void ShowResult(RunResult result, TargetWindow? runTarget)
     {
         stateLabel.Text = result.Title;
         stateLabel.ForeColor = result.Reason switch
@@ -800,7 +893,7 @@ internal sealed class MainForm : Form
             ? $"Held for {FormatSeconds(result.ElapsedMs)}"
             : $"{result.Taps} {(result.Taps == 1 ? "tap" : "taps")} accepted by Windows  ·  {FormatSeconds(result.ElapsedMs)}";
 
-        if (runTarget.IsPracticePad && pad is { IsDisposed: false } && !lastRunWasHold)
+        if (runTarget is { IsPracticePad: true } && pad is { IsDisposed: false } && !lastRunWasHold)
         {
             var seen = pad.TapCycles;
             stats += $"\nPractice pad saw {seen} of {result.Taps}.";

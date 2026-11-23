@@ -19,6 +19,9 @@ public sealed class AppSettings
     public bool DurationEnabled { get; set; }
     public int DurationMs { get; set; } = RunOptions.DefaultDurationMs;
     public int StartDelaySeconds { get; set; } = RunOptions.DefaultStartDelaySeconds;
+
+    /// <summary>Send hardware scan codes instead of virtual keys. Games that read the keyboard directly usually need this.</summary>
+    public bool UseScanCodes { get; set; } = true;
     public string StartHotkey { get; set; } = DefaultStartHotkey.ToStorageString();
     public string StopHotkey { get; set; } = DefaultStopHotkey.ToStorageString();
 
@@ -57,7 +60,7 @@ public sealed class AppSettings
 
         fixedSettings.CountEnabled = CountEnabled;
         fixedSettings.DurationEnabled = DurationEnabled;
-        if (!fixedSettings.CountEnabled && !fixedSettings.DurationEnabled) { fixedSettings.CountEnabled = true; changed = true; }
+        fixedSettings.UseScanCodes = UseScanCodes;
 
         var hasStart = KeyChord.TryParse(StartHotkey, out var start);
         var hasStop = KeyChord.TryParse(StopHotkey, out var stop);

@@ -27,15 +27,31 @@ internal sealed class SystemRunClock : IRunClock
 /// <summary>Sends real key events with SendInput to whatever window is in the foreground.</summary>
 internal sealed class WindowsRunHost : IRunHost
 {
-    private readonly TargetWindow target;
+    private readonly TargetWindow? target;
+    private readonly IntPtr ownWindow;
+    private readonly bool useScanCodes;
 
-    public WindowsRunHost(TargetWindow target) => this.target = target;
+    /// <param name="target">The chosen window, or null to send to whichever window is in front.</param>
+    /// <param name="ownWindow">KeyTapLoop's own window, which is never a valid place to send keys.</param>
+    /// <param name="useScanCodes">Send hardware scan codes, which games that read the keyboard directly usually need.</param>
+    public WindowsRunHost(TargetWindow? target, IntPtr ownWindow, bool useScanCodes)
+    {
+        this.target = target;
+        this.ownWindow = ownWindow;
+        this.useScanCodes = useScanCodes;
+    }
 
-    public bool IsTargetAlive() => target.IsAlive();
-    public bool IsTargetForeground() => target.IsForeground();
+    public bool IsTargetAlive() => target?.IsAlive() ?? true;
 
-    public bool KeyDown(int virtualKey, bool extended) => Send(virtualKey, extended, keyUp: false);
-    public bool KeyUp(int virtualKey, bool extended) => Send(virtualKey, extended, keyUp: true);
+    public bool IsTargetForeground()
+    {
+        if (target is not null) return target.IsForeground();
+        var front = NativeMethods.GetForegroundWindow();
+        return front != IntPtr.Zero && front != ownWindow; // "any window" still never types into this app
+    }
+
+    public bool KeyDown(int virtualKey, bool extended) => Send(virtualKey, extended, keyUp: false, useScanCodes);
+    public bool KeyUp(int virtualKey, bool extended) => Send(virtualKey, extended, keyUp: true, useScanCodes);
 
     public bool IsKeyHeld(int virtualKey) => (NativeMethods.GetAsyncKeyState(virtualKey) & 0x8000) != 0;
 
@@ -43,9 +59,20 @@ internal sealed class WindowsRunHost : IRunHost
     /// Returns true only if Windows queued the event. That is all it proves: another program can
     /// still ignore simulated input, and a higher-privilege window can have it blocked without any error.
     /// </summary>
-    private static bool Send(int virtualKey, bool extended, bool keyUp)
+    private static bool Send(int virtualKey, bool extended, bool keyUp, bool useScanCodes)
     {
         var flags = (keyUp ? NativeMethods.KEYEVENTF_KEYUP : 0u) | (extended ? NativeMethods.KEYEVENTF_EXTENDEDKEY : 0u);
+        var scan = (ushort)NativeMethods.MapVirtualKeyW((uint)virtualKey, NativeMethods.MAPVK_VK_TO_VSC);
+        var vk = (ushort)virtualKey;
+
+        // Scan-code events describe a physical key rather than a character, which is what games that
+        // read the keyboard directly look at. If Windows has no scan code for the key, fall back to the virtual key.
+        if (useScanCodes && scan != 0)
+        {
+            flags |= NativeMethods.KEYEVENTF_SCANCODE;
+            vk = 0;
+        }
+
         var input = new NativeMethods.INPUT
         {
             type = NativeMethods.INPUT_KEYBOARD,
@@ -53,8 +80,8 @@ internal sealed class WindowsRunHost : IRunHost
             {
                 ki = new NativeMethods.KEYBDINPUT
                 {
-                    wVk = (ushort)virtualKey,
-                    wScan = (ushort)NativeMethods.MapVirtualKeyW((uint)virtualKey, NativeMethods.MAPVK_VK_TO_VSC),
+                    wVk = vk,
+                    wScan = scan,
                     dwFlags = flags,
                     time = 0,
                     dwExtraInfo = UIntPtr.Zero,

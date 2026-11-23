@@ -1,15 +1,16 @@
 # KeyTapLoop — Free Auto Key Presser for Windows
 
-KeyTapLoop repeats or holds one key, or one shortcut, in a window you choose. It runs for a count or a time you set, shows what happened, and ends the moment you switch to another window.
+KeyTapLoop repeats or holds one key, or one shortcut. By default it is tied to a window you choose, runs for a count or a time you set (or until you stop it), shows what happened, and ends the moment you switch to another window.
 
 It is a small, portable Windows app. No installer, no account, no network access, no telemetry.
 
 ## What it does
 
 - **Repeat or hold.** Tap a key or shortcut again and again, or hold it down for a set time.
-- **Count and time limits.** Stop after a number of taps, after a number of seconds, or whichever comes first. Every run has a limit.
-- **One chosen window.** Pick a target and the run is bound to that window and its process. Switching tabs inside the window is fine. Switching to a different window ends the run for good, even if you switch straight back. Starting again is always a deliberate click.
-- **Global shortcuts.** `Ctrl + F1` starts, `Ctrl + F2` stops, from anywhere. You can change both.
+- **Count and time limits.** Stop after a number of taps, after a number of seconds, or whichever comes first. Leave both off and it runs until you press Stop.
+- **One chosen window (the default).** Pick a target and the run is bound to that window and its process. Switching tabs inside the window is fine. Switching to a different window ends the run for good, even if you switch straight back. Starting again is always a deliberate click.
+- **Or any window.** Choose **Any window** and keys go to whichever window is in front, with no focus check. Switching windows won’t end the run, so use Stop or a limit. KeyTapLoop never types into its own window.
+- **Global shortcuts.** `Ctrl + F1` starts, `Ctrl + F2` stops, from anywhere. You can change both. The Start shortcut begins immediately, with no delay.
 - **Clear results.** Every run ends with one of `Completed`, `Stopped by you`, `Stopped because focus changed`, `Target closed` or `Couldn’t send input`, with the elapsed time and the number of complete taps Windows accepted.
 - **A practice pad.** A built-in window that shows the key events it actually receives, so you can see for yourself that a key arrived.
 
@@ -35,7 +36,7 @@ Requires Windows 11 x64.
 2. Leave the key as `F` and the defaults as they are: 200 ms between taps, 40 ms key-down, stop after 20 taps. Set the count to `5`.
 3. Click **Start**. A three-second countdown runs while the pad comes to the front. Five `f` characters appear in the pad, and the pad reports `5 tap cycles`.
 4. To use a real app, open it, click **Choose window**, then switch to that app. KeyTapLoop takes whichever window is in front when its three-second countdown ends. Nothing is sent during selection.
-5. Press **Start**, or `Ctrl + F1`, and switch to the target during the start delay. `Ctrl + F1` only starts a run when the chosen window is already in front, so click it first.
+5. Either press **Start** and switch to the target during the start delay, or click into the target and press `Ctrl + F1`, which starts at once. With a chosen window, `Ctrl + F1` only starts a run when that window is already in front. The start delay applies to the Start button only, and can be `0` if you always use the shortcut.
 
 ### Default shortcuts
 
@@ -49,12 +50,12 @@ Change them under **Shortcuts…**. Each needs Ctrl, Alt or Shift. A shortcut th
 ## How a run behaves
 
 - **Period** is start to start, so a 200 ms period with a 40 ms key-down time is a tap every 200 ms. The period must be longer than the key-down time.
-- **Stop limits.** With both a count and a time set, whichever is reached first ends the run.
+- **Stop limits.** With both a count and a time set, whichever is reached first ends the run. With neither, it runs until you press Stop, or until focus leaves the chosen window.
 - **No catch-up bursts.** If the computer stalls, missed taps are skipped rather than fired together.
-- **Focus.** Right before every new key-down, KeyTapLoop checks that the chosen window still exists and is in front. Windows also reports focus changes, and any change ends the run. There is a short gap between a check and Windows delivering the key, so this narrows the chance of a stray key rather than ruling it out.
+- **Focus (chosen window).** Right before every new key-down, KeyTapLoop checks that the chosen window still exists and is in front. Windows also reports focus changes, and any change ends the run. There is a short gap between a check and Windows delivering the key, so this narrows the chance of a stray key rather than ruling it out.
 - **Cleanup.** If a run ends while a key is down, KeyTapLoop releases the keys it pressed, last pressed first. If Windows refuses a release, the result says so. It never adopts a key you were already holding. If one of the keys in your shortcut is held when you press Start, the run refuses to begin.
 - **Start shortcut released first.** When you start with `Ctrl + F1`, the first key is held back until you let go of the shortcut. If it stays held for 1.5 seconds, the run fails with a clear message.
-- **Stop with the mouse.** Clicking the app’s own Stop button moves focus to KeyTapLoop, so that run reports `Stopped because focus changed`. Use `Ctrl + F2` for `Stopped by you`.
+- **Stop with the mouse (chosen window).** Clicking the app’s own Stop button moves focus to KeyTapLoop, so that run reports `Stopped because focus changed`. Use `Ctrl + F2` for `Stopped by you`.
 
 ## Limits worth knowing
 
@@ -62,9 +63,10 @@ KeyTapLoop sends ordinary simulated keyboard input with the documented Windows `
 
 - **“Accepted” is not “received”.** Windows accepting a key event only means it was queued. The count KeyTapLoop shows is complete taps Windows accepted. Whether the target reacted is up to the target, so always look at the window. Only the practice pad can confirm a key arrived.
 - **Some apps ignore simulated input.** That includes some games, anti-cheat systems and apps that read hardware input directly. There is no claim of support for any particular game.
-- **Higher-privilege windows.** Windows can silently drop input sent to a window running as administrator. KeyTapLoop warns when a chosen window may be one, but it can’t be sure.
+- **Administrator windows.** Windows silently drops input sent to a window running as administrator, and it reports success anyway. This is the most common reason keys “send” with no effect. KeyTapLoop warns when a chosen window probably runs as administrator and offers **Restart as administrator**, after which the keys can get through. Only do that for software you trust.
+- **Scan codes.** Games that read the keyboard directly often ignore ordinary key events. By default KeyTapLoop sends hardware scan codes, which suits them. Turn **Send as hardware scan codes** off if a normal app misbehaves.
 - **Foreground only.** Keys go to whatever has focus. There is no background delivery.
-- **Check the rules.** Some games and services forbid automated input. Make sure what you automate is allowed.
+- **Check the rules.** Many online games and services forbid automated input, use anti-cheat that watches for it, and ban accounts for it. KeyTapLoop makes no claim of support for any game. Use it only where automation is allowed, and not on an account you can’t afford to lose.
 
 ## Privacy
 

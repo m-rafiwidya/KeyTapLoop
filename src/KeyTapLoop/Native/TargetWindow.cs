@@ -1,4 +1,3 @@
-using System.Security.Principal;
 using System.Text;
 
 namespace KeyTapLoop.Native;
@@ -92,13 +91,7 @@ internal sealed class TargetWindow
         finally { NativeMethods.CloseHandle(handle); }
     }
 
-    private static readonly bool WeAreElevated = IsCurrentProcessElevated();
-
-    private static bool IsCurrentProcessElevated()
-    {
-        using var identity = WindowsIdentity.GetCurrent();
-        return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
-    }
+    private static readonly bool WeAreElevated = Elevation.IsElevated;
 
     /// <summary>
     /// Windows silently drops simulated input sent to a higher-integrity window and reports no error,

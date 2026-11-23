@@ -235,14 +235,21 @@ public sealed class RunSession
     private async Task<Outcome> HoldAsync(CancellationToken token)
     {
         var start = Interlocked.Read(ref startMs);
-        var deadline = start + (options.DurationMs ?? 0);
 
         var gate = CheckBeforeKeyDown();
         if (gate is not null) return gate;
         if (!PressChord(out var pressError))
             return new Outcome(EndReason.InputFailed, LimitKind.None, pressError);
 
-        await clock.DelayUntilAsync(deadline, token).ConfigureAwait(false);
+        if (options.DurationMs is { } duration)
+        {
+            await clock.DelayUntilAsync(start + duration, token).ConfigureAwait(false);
+        }
+        else
+        {
+            // No time limit: keep holding until Stop, a focus change or the target closing cancels the wait.
+            while (true) await clock.DelayUntilAsync(clock.NowMs + 3_600_000, token).ConfigureAwait(false);
+        }
 
         if (!ReleaseOwned())
             return new Outcome(EndReason.InputFailed, LimitKind.None, "Windows didn’t accept a key release.");

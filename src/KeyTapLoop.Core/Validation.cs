@@ -79,16 +79,13 @@ public static class RunValidator
             else errors[Field.Count] = countError;
         }
 
-        var durationRequired = hold || input.DurationEnabled;
-        if (durationRequired)
+        // Limits are optional. With none set, the run lasts until the user stops it.
+        if (input.DurationEnabled)
         {
             if (TryDecimal(input.DurationSeconds, MinDurationSeconds, MaxDurationSeconds, out var seconds, out var durationError))
                 durationMs = (int)Math.Round(seconds * 1000);
             else errors[Field.Duration] = durationError;
         }
-
-        if (!hold && !input.CountEnabled && !input.DurationEnabled)
-            errors[Field.Count] = "Turn on a tap count, a time limit, or both. Repeat runs need at least one limit.";
 
         // Start delay
         var delayMs = 0;

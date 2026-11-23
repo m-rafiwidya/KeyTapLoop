@@ -27,7 +27,7 @@ Use Notepad, or any plain text box, as the target unless noted. Record each resu
 | 5b | Hold the chord `Ctrl + Shift + F`, then stop. Ctrl and Shift are not stuck. Click in Notepad and type normally. | | |
 | 5c | Close the target mid-run. The result is `Target closed`, no key is stuck, and the app asks for a new target. | | |
 | 5d | Physically hold `Shift`, then start a run whose chord includes `Shift`. The run refuses to start and says a key is already held. KeyTapLoop never releases your Shift. | | |
-| 6a | Clear the period field, type `abc`, set period lower than key-down, and turn off both limits. Each shows an error next to its control, and Start does nothing. | | |
+| 6a | Clear the period field, type `abc`, and set period lower than key-down. Each shows an error next to its control, and Start does nothing. | | |
 | 6b | Set the Start shortcut to something another app owns. The conflict is reported and the old shortcut stays active. | | |
 | 6c | Try `Alt + Tab`, `Alt + F4` and `Ctrl + F1` as the output key. Each is rejected with a reason. | | |
 | 6d | Close the target, then press Start. It asks for a new target. | | |
@@ -35,6 +35,24 @@ Use Notepad, or any plain text box, as the target unless noted. Record each resu
 | 6f | Relaunch after a normal session. The app opens idle, with no window chosen and nothing running. | | |
 | 7a | On a clean Windows 11 x64 profile or machine with no .NET installed, unzip and run `KeyTapLoop.exe`. It starts. | | |
 | 7b | Repeat the five-press practice pad test. | | |
+
+## Added after the first Windows trial
+
+| # | Check | Result | Notes |
+| --- | --- | --- | --- |
+| 8a | Turn off both limits in Repeat mode. The hint says it runs until you stop it. Start, then press the Stop shortcut. It stops with `Stopped by you`. | | |
+| 8b | Hold mode with no time limit. The key stays down until Stop, then is released (type normally afterwards). | | |
+| 9a | Set the start delay to `0`, click into Notepad, press `Ctrl + F1`. It starts at once, with no countdown. | | |
+| 9b | Set the start delay to `3`, press `Ctrl + F1` from Notepad. It still starts at once. The delay only applies to the Start button. | | |
+| 10a | Choose **Any window**. Click into Notepad, press `Ctrl + F1`. Characters appear. Alt+Tab to another editor: characters continue there, and the run does not end. | | |
+| 10b | Any window, Start button with delay `0`. It refuses, saying KeyTapLoop is in front. It never types into KeyTapLoop itself. | | |
+| 10c | Any window: click KeyTapLoop during a run. The run ends. | | |
+| 11a | Choose an app running as administrator as the target. The warning and **Restart as administrator** button appear. | | |
+| 11b | Click **Restart as administrator** and accept the prompt. The new window’s title says (administrator) and the old one closes. Choose the same app again: a run now visibly types into it. | | |
+| 11c | Decline the prompt. KeyTapLoop stays as it was and says so. | | |
+| 12a | With **Send as hardware scan codes** on, the Notepad five-tap test still gives exactly five `f`. | | |
+| 12b | With it off, the same test still gives exactly five `f`. | | |
+| 12c | Arrow keys and Space in scan-code mode behave correctly in Notepad. | | |
 
 ## Also worth checking
 

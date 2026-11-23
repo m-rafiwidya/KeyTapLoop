@@ -6,26 +6,39 @@ namespace KeyTapLoop;
 internal static class Program
 {
     [STAThread]
-    private static void Main()
+    private static void Main(string[] args)
     {
         ApplicationConfiguration.Initialize();
 
         // One copy at a time: two copies would fight over the same global shortcuts.
-        using var singleInstance = new Mutex(initiallyOwned: true, @"Local\KeyTapLoop.SingleInstance", out var isFirst);
-        if (!isFirst)
+        // A copy started by "Restart as administrator" waits briefly for the old one to close.
+        var restarted = args.Contains(Elevation.RestartedFlag);
+        using var singleInstance = new Mutex(initiallyOwned: false, @"Local\KeyTapLoop.SingleInstance");
+        var owned = false;
+        try { owned = singleInstance.WaitOne(restarted ? TimeSpan.FromSeconds(8) : TimeSpan.Zero); }
+        catch (AbandonedMutexException) { owned = true; } // the previous copy was killed; the lock is ours now
+
+        if (!owned)
         {
             MessageBox.Show("KeyTapLoop is already running.", "KeyTapLoop", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
-        if (!WindowsRunHost.StructLayoutIsValid)
+        try
         {
-            MessageBox.Show(
-                "This build can’t send keys on this system (unexpected input structure size). Use the 64-bit Windows build.",
-                "KeyTapLoop", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            return;
-        }
+            if (!WindowsRunHost.StructLayoutIsValid)
+            {
+                MessageBox.Show(
+                    "This build can\u2019t send keys on this system (unexpected input structure size). Use the 64-bit Windows build.",
+                    "KeyTapLoop", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
 
-        Application.Run(new MainForm());
+            Application.Run(new MainForm());
+        }
+        finally
+        {
+            singleInstance.ReleaseMutex();
+        }
     }
 }

@@ -335,6 +335,74 @@ public class RunSessionTests
         Assert.Empty(host.Events);
     }
 
+    // ---- Running until stopped -------------------------------------------------------------
+
+    [Fact]
+    public async Task Repeat_with_no_limit_keeps_going_until_stopped()
+    {
+        var (session, host, _) = Make(Repeat(taps: null, durationMs: null));
+        host.OnEvent = e => { if (!e.Down && host.Downs(F).Count == 250) session.Stop(); };
+
+        var result = await session.RunAsync();
+
+        Assert.Equal(EndReason.StoppedByUser, result.Reason);
+        Assert.Equal(250, result.Taps);
+        Assert.True(host.IsBalanced());
+    }
+
+    [Fact]
+    public async Task Repeat_with_no_limit_still_ends_when_focus_moves()
+    {
+        var (session, host, _) = Make(Repeat(taps: null, durationMs: null));
+        host.OnEvent = e => { if (!e.Down && host.Downs(F).Count == 10) host.Foreground = false; };
+
+        var result = await session.RunAsync();
+
+        Assert.Equal(EndReason.FocusChanged, result.Reason);
+        Assert.Equal(10, host.Downs(F).Count);
+    }
+
+    [Fact]
+    public async Task Hold_with_no_time_limit_holds_until_stopped_then_releases()
+    {
+        var fake = new FakeClock();
+        var host = new FakeHost(fake);
+        var clock = new StopAfterClock(fake, virtualHours: 5);
+        var options = new RunOptions(new KeyChord(F, false, false, false), RunMode.Hold, 0, 0, null, null, 0, Array.Empty<int>());
+        var session = new RunSession(options, host, clock);
+        clock.Session = session;
+
+        var result = await session.RunAsync();
+
+        Assert.Equal(EndReason.StoppedByUser, result.Reason);
+        Assert.True(result.ElapsedMs >= 5 * 3_600_000L);     // it really did keep holding
+        Assert.Single(host.Downs(F));
+        Assert.True(host.IsBalanced());
+        Assert.False(host.Events.Last().Down);
+    }
+
+    /// <summary>A virtual clock that presses Stop once some virtual hours have gone by.</summary>
+    private sealed class StopAfterClock : IRunClock
+    {
+        private readonly FakeClock inner;
+        private readonly long limitMs;
+        public RunSession? Session { get; set; }
+
+        public StopAfterClock(FakeClock inner, int virtualHours)
+        {
+            this.inner = inner;
+            limitMs = virtualHours * 3_600_000L;
+        }
+
+        public long NowMs => inner.NowMs;
+
+        public Task DelayUntilAsync(long targetMs, CancellationToken token)
+        {
+            if (inner.NowMs >= limitMs) Session!.Stop();
+            return inner.DelayUntilAsync(targetMs, token);   // throws once Stop has cancelled the token
+        }
+    }
+
     // ---- Hold ----------------------------------------------------------------------------
 
     [Fact]

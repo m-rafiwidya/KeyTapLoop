@@ -59,13 +59,29 @@ public class ValidationTests
     }
 
     [Fact]
-    public void Repeat_needs_at_least_one_cap()
+    public void Repeat_with_no_limit_is_allowed_and_runs_until_stopped()
     {
         var input = Valid();
         input.CountEnabled = false;
         input.DurationEnabled = false;
         var result = RunValidator.Validate(input);
-        Assert.Contains(Field.Count, result.Errors.Keys);
+        Assert.True(result.IsValid);
+        Assert.Null(result.Options!.MaxTaps);
+        Assert.Null(result.Options.DurationMs);
+    }
+
+    [Fact]
+    public void A_switched_on_limit_still_has_to_be_valid()
+    {
+        var input = Valid();
+        input.CountEnabled = true;
+        input.Count = "0";
+        Assert.Contains(Field.Count, RunValidator.Validate(input).Errors.Keys);
+
+        input.Count = "5";
+        input.DurationEnabled = true;
+        input.DurationSeconds = "";
+        Assert.Contains(Field.Duration, RunValidator.Validate(input).Errors.Keys);
     }
 
     [Fact]
@@ -82,20 +98,35 @@ public class ValidationTests
     }
 
     [Fact]
-    public void Hold_ignores_repeat_fields_but_requires_a_duration()
+    public void Hold_ignores_repeat_fields()
     {
         var input = Valid();
         input.Mode = RunMode.Hold;
         input.Period = "garbage";
         input.KeyDown = "";
         input.Count = "";
+        input.CountEnabled = true;
         input.DurationEnabled = false;
         input.DurationSeconds = "";
+
         var result = RunValidator.Validate(input);
-        Assert.Equal(new[] { Field.Duration }, result.Errors.Keys.ToArray());
+
+        Assert.True(result.IsValid);                     // holds until stopped
+        Assert.Null(result.Options!.DurationMs);
+        Assert.Null(result.Options.MaxTaps);
+    }
+
+    [Fact]
+    public void Hold_with_a_time_limit_needs_a_valid_time()
+    {
+        var input = Valid();
+        input.Mode = RunMode.Hold;
+        input.DurationEnabled = true;
+        input.DurationSeconds = "nope";
+        Assert.Equal(new[] { Field.Duration }, RunValidator.Validate(input).Errors.Keys.ToArray());
 
         input.DurationSeconds = "1.5";
-        Assert.True(RunValidator.Validate(input).IsValid);
+        Assert.Equal(1500, RunValidator.Validate(input).Options!.DurationMs);
     }
 
     [Fact]
@@ -269,6 +300,15 @@ public sealed class SettingsTests : IDisposable
         var path = PathFor("empty.json");
         File.WriteAllText(path, "");
         Assert.NotNull(SettingsStore.Load(path).Warning);
+    }
+
+    [Fact]
+    public void The_scan_code_preference_is_remembered_and_defaults_on()
+    {
+        Assert.True(new AppSettings().UseScanCodes);
+        var path = PathFor("scan.json");
+        SettingsStore.TrySave(path, new AppSettings { UseScanCodes = false });
+        Assert.False(SettingsStore.Load(path).Settings.UseScanCodes);
     }
 
     [Fact]
