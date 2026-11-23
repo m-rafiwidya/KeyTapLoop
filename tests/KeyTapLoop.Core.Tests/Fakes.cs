@@ -5,11 +5,15 @@ namespace KeyTapLoop.Core.Tests;
 /// <summary>Virtual time: waiting just moves the clock forward. Fully deterministic, no real sleeping.</summary>
 internal sealed class FakeClock : IRunClock
 {
+    /// <summary>A run that needs more virtual time than this is stuck in a loop. Fail fast instead of hanging.</summary>
+    public const long RunawayLimitMs = 30L * 24 * 3_600_000;
+
     public long NowMs { get; set; }
 
     public Task DelayUntilAsync(long targetMs, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
+        if (targetMs > RunawayLimitMs) throw new InvalidOperationException("Virtual time ran away: the run never ended.");
         if (targetMs > NowMs) NowMs = targetMs;
         return Task.CompletedTask;
     }

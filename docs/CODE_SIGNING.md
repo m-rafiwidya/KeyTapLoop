@@ -34,6 +34,24 @@ The certificate is issued to SignPath Foundation, so **SignPath Foundation is sh
 
 The signing step is switched off until `SIGNPATH_ORGANIZATION_ID` exists, so releases keep working unsigned in the meantime. I couldn’t test the SignPath step from here. Expect to adjust the artifact configuration on first use.
 
+## Answers for the SignPath application
+
+Use these when you fill in the form. Check each against the form’s current fields, and correct anything that isn’t true by then.
+
+| Field | Answer |
+| --- | --- |
+| Project name | KeyTapLoop |
+| Repository | `https://github.com/m-rafiwidya/KeyTapLoop` (must be public when you apply) |
+| License | MIT (OSI-approved) |
+| One-line description | A free, portable Windows utility that repeats or holds one key or shortcut for a set count or time, with global shortcuts and a run that ends when focus moves. |
+| What would be signed | `KeyTapLoop.exe`, a self-contained .NET 10 WinForms executable, built from source by GitHub Actions on tagged releases. |
+| Build system | GitHub Actions (`.github/workflows/release.yml`) |
+| Network access or telemetry | None. No accounts, no network calls, no telemetry. |
+| Does it need elevated rights? | No. It runs with normal user rights. An optional “restart as administrator” button exists for sending keys to administrator windows. |
+| Download page | The repository’s Releases page, with a SHA-256 hash for each file |
+
+Be upfront that the app **sends simulated keyboard input**. Automation tools can look like unwanted software to scanners and reviewers, so say clearly what it does, that it is open source, and that it never runs without the user starting it.
+
 ## Draft code signing policy
 
 Publish this in the repository (for example in the README) when you apply.

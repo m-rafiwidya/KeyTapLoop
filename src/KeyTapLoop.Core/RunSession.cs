@@ -38,6 +38,9 @@ public sealed class RunSession
     public const int StartKeyReleaseTimeoutMs = 1500;
     private const int PollMs = 10;
 
+    /// <summary>How often a wait re-checks that the target still exists and is in front.</summary>
+    private const int WatchMs = 50;
+
     private readonly RunOptions options;
     private readonly IRunHost host;
     private readonly IRunClock clock;
@@ -132,6 +135,7 @@ public sealed class RunSession
         var elapsed = startedAt < 0 ? 0 : Math.Max(0, clock.NowMs - startedAt);
         Interlocked.Exchange(ref endedElapsedMs, elapsed);
         Volatile.Write(ref phase, (int)RunPhase.Ended);
+        cts.Dispose(); // late Stop or focus calls are ignored: RequestEnd tolerates a disposed source
         return new RunResult(outcome.Reason, outcome.Limit, Taps, elapsed, detail, !released);
     }
 
@@ -205,7 +209,8 @@ public sealed class RunSession
                 return new Outcome(EndReason.Completed, LimitKind.Duration, "Reached the time limit.");
             }
 
-            await clock.DelayUntilAsync(slot, token).ConfigureAwait(false);
+            var early = await WaitWatchingAsync(slot, token).ConfigureAwait(false);
+            if (early is not null) return early;
             if (clock.NowMs >= deadline)
                 return new Outcome(EndReason.Completed, LimitKind.Duration, "Reached the time limit.");
 
@@ -215,7 +220,8 @@ public sealed class RunSession
             if (!PressChord(out var pressError))
                 return new Outcome(EndReason.InputFailed, LimitKind.None, pressError);
 
-            await clock.DelayUntilAsync(clock.NowMs + options.KeyDownMs, token).ConfigureAwait(false);
+            var heldEarly = await WaitWatchingAsync(clock.NowMs + options.KeyDownMs, token).ConfigureAwait(false);
+            if (heldEarly is not null) return heldEarly;   // the key is released by the final cleanup
 
             if (!ReleaseOwned())
                 return new Outcome(EndReason.InputFailed, LimitKind.None, "Windows didn’t accept a key release.");
@@ -241,19 +247,32 @@ public sealed class RunSession
         if (!PressChord(out var pressError))
             return new Outcome(EndReason.InputFailed, LimitKind.None, pressError);
 
-        if (options.DurationMs is { } duration)
-        {
-            await clock.DelayUntilAsync(start + duration, token).ConfigureAwait(false);
-        }
-        else
-        {
-            // No time limit: keep holding until Stop, a focus change or the target closing cancels the wait.
-            while (true) await clock.DelayUntilAsync(clock.NowMs + 3_600_000, token).ConfigureAwait(false);
-        }
+        // With no time limit the key stays down until Stop, or until the target closes or loses focus.
+        var until = options.DurationMs is { } duration ? start + duration : long.MaxValue;
+        var heldEarly = await WaitWatchingAsync(until, token).ConfigureAwait(false);
+        if (heldEarly is not null) return heldEarly;   // the key is released by the final cleanup
 
         if (!ReleaseOwned())
             return new Outcome(EndReason.InputFailed, LimitKind.None, "Windows didn’t accept a key release.");
         return new Outcome(EndReason.Completed, LimitKind.Duration, "Released the key at the time limit.");
+    }
+
+    /// <summary>
+    /// Waits until <paramref name="targetMs"/>, re-checking every <see cref="WatchMs"/> that the target still
+    /// exists and is in front. This backs up the Windows focus event, so a missed event can't leave a key held.
+    /// Returns an outcome if the run must end early, or null when the time arrived.
+    /// </summary>
+    private async Task<Outcome?> WaitWatchingAsync(long targetMs, CancellationToken token)
+    {
+        while (true)
+        {
+            var now = clock.NowMs;
+            if (now >= targetMs) return null;
+            await clock.DelayUntilAsync(targetMs - now > WatchMs ? now + WatchMs : targetMs, token).ConfigureAwait(false);
+            if (clock.NowMs >= targetMs) return null;
+            var gate = CheckBeforeKeyDown();
+            if (gate is not null) return gate;
+        }
     }
 
     /// <summary>Runs immediately before every new key-down. Returns an outcome if the run must end.</summary>

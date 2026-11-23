@@ -335,6 +335,54 @@ public class RunSessionTests
         Assert.Empty(host.Events);
     }
 
+    // ---- A missed focus event must not leave a key held -------------------------------------------
+
+    [Fact]
+    public async Task Hold_notices_a_focus_loss_even_if_no_event_arrives()
+    {
+        var clock = new FakeClock();
+        var host = new FakeHost(clock);
+        var session = new RunSession(
+            new RunOptions(new KeyChord(F, false, false, false), RunMode.Hold, 0, 0, null, null, 0, Array.Empty<int>()),
+            host, clock);
+        host.OnEvent = e => { if (e.Down) host.Foreground = false; };   // silently, with no OnForegroundChanged call
+
+        var result = await session.RunAsync();
+
+        Assert.Equal(EndReason.FocusChanged, result.Reason);
+        Assert.True(host.IsBalanced());
+        Assert.True(result.ElapsedMs <= 100);                            // noticed within a couple of checks
+    }
+
+    [Fact]
+    public async Task Hold_notices_a_closed_target_even_if_no_event_arrives()
+    {
+        var clock = new FakeClock();
+        var host = new FakeHost(clock);
+        var session = new RunSession(
+            new RunOptions(new KeyChord(F, false, false, false), RunMode.Hold, 0, 0, null, 60_000, 0, Array.Empty<int>()),
+            host, clock);
+        host.OnEvent = e => { if (e.Down) host.Alive = false; };
+
+        var result = await session.RunAsync();
+
+        Assert.Equal(EndReason.TargetClosed, result.Reason);
+        Assert.True(host.IsBalanced());
+    }
+
+    [Fact]
+    public async Task A_long_gap_between_taps_still_notices_a_focus_loss_promptly()
+    {
+        var (session, host, clock) = Make(Repeat(taps: 100, period: 10_000, keyDown: 40));
+        host.OnEvent = e => { if (!e.Down) host.Foreground = false; };
+
+        var result = await session.RunAsync();
+
+        Assert.Equal(EndReason.FocusChanged, result.Reason);
+        Assert.Single(host.Downs(F));
+        Assert.True(clock.NowMs < 1000);                                 // not after the full 10 s wait
+    }
+
     // ---- Running until stopped -------------------------------------------------------------
 
     [Fact]
