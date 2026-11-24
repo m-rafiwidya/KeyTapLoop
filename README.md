@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/logo.png" alt="KeyTapLoop logo: a keycap inside a loop arrow" width="112"></p>
+
 # KeyTapLoop — Free Auto Key Presser for Windows
 
 KeyTapLoop repeats or holds one key, or one shortcut. By default it is tied to a window you choose, runs for a count or a time you set (or until you stop it), shows what happened, and ends the moment you switch to another window.
@@ -10,9 +12,9 @@ It is a small, portable Windows app. No installer, no account, no network access
 - **Count and time limits.** Stop after a number of taps, after a number of seconds, or whichever comes first. Leave both off and it runs until you press Stop.
 - **One chosen window (the default).** Pick a target and the run is bound to that window and its process. Switching tabs inside the window is fine. Switching to a different window ends the run for good, even if you switch straight back. Starting again is always a deliberate click.
 - **Or any window.** Choose **Any window** and keys go to whichever window is in front, with no focus check. Switching windows won’t end the run, so use Stop or a limit. KeyTapLoop never types into its own window.
-- **Global shortcuts.** `Ctrl + F1` starts, `Ctrl + F2` stops and `Ctrl + F3` toggles (starts a run, or stops the one that is running), from anywhere. You can change all three. Shortcuts begin immediately, with no delay.
-- **Sound cues.** A short rising tone when a run starts, a falling tone when it finishes or you stop it, and a low double beep if something else ended it (focus moved, the target closed, input failed). Switch them off with the **Sounds** box.
-- **Light and dark.** The window follows your Windows light or dark setting by default. The **Theme** button cycles between Auto, Light and Dark.
+- **Global shortcuts.** `Ctrl + F1` starts, `Ctrl + F2` stops and `Ctrl + F3` toggles (starts a run, or stops the one that is running), from anywhere. You can change all three under **Settings**. Shortcuts begin immediately, with no delay.
+- **Sound cues.** A short rising tone when a run starts, a falling tone when it finishes or you stop it, and a low double beep if something else ended it (focus moved, the target closed, input failed). Turn them off in **Settings**.
+- **Light and dark.** The window follows your Windows light or dark setting by default. Pick Auto, Light or Dark in **Settings**.
 - **Clear results.** Every run ends with one of `Completed`, `Stopped by you`, `Stopped because focus changed`, `Target closed` or `Couldn’t send input`, with the elapsed time and the number of complete taps Windows accepted.
 - **A practice pad.** A built-in window that shows the key events it actually receives, so you can see for yourself that a key arrived.
 
@@ -48,7 +50,7 @@ Requires Windows 11 x64.
 | Stop | `Ctrl + F2` |
 | Toggle (start or stop) | `Ctrl + F3` |
 
-Change them under **Shortcuts…**. Each needs Ctrl, Alt or Shift, and all three must differ. A shortcut that another app already owns is reported, and your previous ones stay active. The key you send can’t be one of these shortcuts.
+Change them under **Settings…**. Each needs Ctrl, Alt or Shift, and all three must differ. A shortcut that another app already owns is reported, and your previous ones stay active. The key you send can’t be one of these shortcuts.
 
 ## How a run behaves
 
@@ -67,7 +69,7 @@ KeyTapLoop sends ordinary simulated keyboard input with the documented Windows `
 - **“Accepted” is not “received”.** Windows accepting a key event only means it was queued. The count KeyTapLoop shows is complete taps Windows accepted. Whether the target reacted is up to the target, so always look at the window. Only the practice pad can confirm a key arrived.
 - **Some apps ignore simulated input.** That includes some games, anti-cheat systems and apps that read hardware input directly. There is no claim of support for any particular game.
 - **Administrator windows.** Windows silently drops input sent to a window running as administrator, and it reports success anyway. This is the most common reason keys “send” with no effect. KeyTapLoop warns when a chosen window probably runs as administrator and offers **Restart as administrator**, after which the keys can get through. Only do that for software you trust.
-- **Scan codes.** Games that read the keyboard directly often ignore ordinary key events. By default KeyTapLoop sends hardware scan codes, which suits them. Turn **Send as hardware scan codes** off if a normal app misbehaves.
+- **Scan codes.** Games that read the keyboard directly often ignore ordinary key events. By default KeyTapLoop sends hardware scan codes, which suits them. If an ordinary app ever misbehaves, turn **Send hardware scan codes** off in **Settings**.
 - **Foreground only.** Keys go to whatever has focus. There is no background delivery.
 - **Check the rules.** Many online games and services forbid automated input, use anti-cheat that watches for it, and ban accounts for it. KeyTapLoop makes no claim of support for any game. Use it only where automation is allowed, and not on an account you can’t afford to lose.
 

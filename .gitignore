@@ -13,6 +13,7 @@ publish/
 *.rsuser
 
 # Test output
+ui-screenshots/
 TestResults/
 *.trx
 

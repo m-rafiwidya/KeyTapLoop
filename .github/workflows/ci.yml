@@ -18,6 +18,16 @@ jobs:
         run: dotnet build -c Release
       - name: Test
         run: dotnet test -c Release --no-build
+      # The UI tests render the real windows in light and dark and save pictures of them.
+      - name: Upload UI screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: KeyTapLoop-ui-screenshots
+          path: ui-screenshots/*.png
+          retention-days: 30
+          if-no-files-found: warn
+
       - name: Publish portable build
         run: ./scripts/publish.ps1
       - name: Upload portable build

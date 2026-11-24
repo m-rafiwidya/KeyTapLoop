@@ -175,7 +175,7 @@ internal sealed class CheckRow : CheckBox
     {
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
-        g.Clear(Parent?.BackColor ?? Theme.Background);
+        g.Clear(BackdropColor());
 
         var box = new Rectangle(1, (Height - BoxSize) / 2, BoxSize - 1, BoxSize - 1);
         var enabled = Enabled;
@@ -216,6 +216,17 @@ internal sealed class CheckRow : CheckBox
         TextRenderer.DrawText(g, Text, Font, new Rectangle(BoxSize + Gap, 0, Width - BoxSize - Gap, Height),
             enabled ? ForeColor : Theme.Disabled,
             TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
+    }
+
+    /// <summary>
+    /// The colour behind this control. Layout panels are transparent, and clearing a buffered surface with a
+    /// transparent colour paints black, so walk up to the first panel that has a real colour.
+    /// </summary>
+    private Color BackdropColor()
+    {
+        for (var c = Parent; c is not null; c = c.Parent)
+            if (c.BackColor.A == 255) return c.BackColor;
+        return Theme.Background;
     }
 
     private static GraphicsPath Rounded(Rectangle r, int radius)

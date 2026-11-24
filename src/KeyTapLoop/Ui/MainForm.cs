@@ -14,7 +14,7 @@ internal sealed class MainForm : Form
     private const int RightWidth = 300;
     private const int ColumnGap = 36;
 
-    private readonly string settingsPath = SettingsStore.DefaultPath;
+    private readonly string settingsPath;
     private readonly SystemRunClock clock = new();
     private readonly ForegroundWatcher watcher = new();
     private readonly System.Windows.Forms.Timer uiTimer = new() { Interval = 100 };
@@ -28,7 +28,6 @@ internal sealed class MainForm : Form
     private readonly CaptureButton captureButton = new("Capture") { Size = new Size(72, 32), AccessibleName = "Capture a key press" };
     private readonly Label outputPreview = Theme.Label("", muted: true, size: 9f);
     private readonly Label outputError = Theme.ErrorLabel(LeftWidth);
-    private readonly CheckRow scanCodeCheck = new() { Text = "Send as hardware scan codes (try this for games)", Checked = true, AccessibleName = "Send hardware scan codes. Games that read the keyboard directly usually need this." };
 
     // Mode and timing
     private readonly RadioButton repeatRadio = new() { Text = "Repeat", Checked = true, Size = new Size(96, 32), AccessibleName = "Repeat mode: tap the key again and again" };
@@ -62,10 +61,8 @@ internal sealed class MainForm : Form
     private readonly Label stateLabel = Theme.Label("Ready", size: 14f, style: FontStyle.Bold);
     private readonly Label detailLabel = Theme.Label("", muted: true, size: 9f);
     private readonly Label statsLabel = Theme.Label("", size: 9.5f);
-    private readonly Button themeButton = new() { AutoSize = true, MinimumSize = new Size(0, 28), AccessibleName = "Switch between automatic, light and dark appearance" };
-    private readonly CheckRow soundCheck = new() { Text = "Sounds", Checked = true, AccessibleName = "Play a short sound when a run starts and ends" };
     private readonly SoundCues sounds = new();
-    private readonly Button shortcutsButton = new() { Text = "Shortcuts…", AutoSize = true, MinimumSize = new Size(0, 28), AccessibleName = "Change the Start and Stop shortcuts" };
+    private readonly Button settingsButton = new() { Text = "Settings…", AutoSize = true, MinimumSize = new Size(0, 28), AccessibleName = "Settings: shortcuts, appearance, sound and compatibility" };
 
     // State
     private AppSettings lastValid;
@@ -86,8 +83,12 @@ internal sealed class MainForm : Form
     private RunOptions? activeOptions;
     private readonly List<string> startupNotes = new();
 
-    public MainForm()
+    public MainForm() : this(SettingsStore.DefaultPath) { }
+
+    /// <summary>Uses a specific settings file. The UI tests use this so they never touch the real one.</summary>
+    internal MainForm(string settingsPath)
     {
+        this.settingsPath = settingsPath;
         var loaded = SettingsStore.Load(settingsPath);
         lastValid = loaded.Settings;
         startHotkey = lastValid.StartChord;
@@ -135,10 +136,9 @@ internal sealed class MainForm : Form
         Theme.StyleButton(padButton, quiet: true);
         Theme.StyleButton(startButton, primary: true);
         Theme.StyleButton(stopButton);
-        Theme.StyleButton(shortcutsButton, quiet: true);
-        Theme.StyleButton(themeButton, quiet: true);
+        Theme.StyleButton(settingsButton, quiet: true);
 
-        foreach (var c in new[] { countCheck, durationCheck, scanCodeCheck, soundCheck })
+        foreach (var c in new[] { countCheck, durationCheck })
         {
             c.ForeColor = Theme.Text;
             c.BackColor = Color.Transparent;
@@ -213,14 +213,10 @@ internal sealed class MainForm : Form
 
         // Footer
         var footer = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = new Padding(0, 18, 0, 0) };
-        shortcutsButton.Margin = new Padding(-8, 0, 0, 0);
-        themeButton.Margin = new Padding(4, 0, 0, 0);
-        soundCheck.Margin = new Padding(14, 3, 0, 0);
+        settingsButton.Margin = new Padding(-8, 0, 0, 0);
         var version = Theme.Label($"v{typeof(MainForm).Assembly.GetName().Version?.ToString(3) ?? "0.1.0"}  ·  open source  ·  no network, no telemetry{(Elevation.IsElevated ? "  ·  administrator" : "")}", muted: true, size: 8.5f);
         version.Margin = new Padding(18, 7, 0, 0);
-        footer.Controls.Add(shortcutsButton);
-        footer.Controls.Add(themeButton);
-        footer.Controls.Add(soundCheck);
+        footer.Controls.Add(settingsButton);
         footer.Controls.Add(version);
         root.Controls.Add(footer, 0, 2);
         root.SetColumnSpan(footer, 3);
@@ -262,10 +258,8 @@ internal sealed class MainForm : Form
 
         outputPreview.Margin = new Padding(0, 8, 0, 0);
         wrap.Controls.Add(row);
-        scanCodeCheck.Margin = new Padding(0, 10, 0, 0);
         wrap.Controls.Add(outputPreview);
         wrap.Controls.Add(outputError);
-        wrap.Controls.Add(scanCodeCheck);
         return wrap;
     }
 
@@ -393,7 +387,6 @@ internal sealed class MainForm : Form
     {
         foreach (var t in new[] { ctrlToggle, altToggle, shiftToggle }) t.CheckedChanged += (_, _) => OnInputChanged();
         keyBox.SelectedIndexChanged += (_, _) => OnInputChanged();
-        scanCodeCheck.CheckedChanged += (_, _) => OnInputChanged();
         chosenRadio.CheckedChanged += (_, _) => UpdateTargetMode();
         anyRadio.CheckedChanged += (_, _) => UpdateTargetMode();
         adminButton.Click += (_, _) => RestartAsAdministrator();
@@ -409,15 +402,7 @@ internal sealed class MainForm : Form
         padButton.Click += (_, _) => UsePracticePad();
         startButton.Click += (_, _) => StartRun(null);
         stopButton.Click += (_, _) => StopRun();
-        shortcutsButton.Click += (_, _) => EditShortcuts();
-        themeButton.Click += (_, _) => CycleTheme();
-        soundCheck.CheckedChanged += (_, _) =>
-        {
-            sounds.Enabled = soundCheck.Checked;
-            if (loading) return;
-            lastValid.SoundCues = soundCheck.Checked;
-            if (soundCheck.Checked) sounds.Play(Cue.Start);   // a preview, so you can hear what you turned on
-        };
+        settingsButton.Click += (_, _) => OpenSettings();
 
         uiTimer.Tick += (_, _) => ShowProgress();
         pickTimer.Tick += (_, _) => OnPickTick();
@@ -461,7 +446,7 @@ internal sealed class MainForm : Form
             durationField.Enabled = durationCheck.Checked && !busy;
             delayField.Enabled = !busy;
 
-            foreach (var c in new Control[] { ctrlToggle, altToggle, shiftToggle, keyBox, captureButton, repeatRadio, holdRadio, scanCodeCheck, chosenRadio, anyRadio })
+            foreach (var c in new Control[] { ctrlToggle, altToggle, shiftToggle, keyBox, captureButton, repeatRadio, holdRadio, chosenRadio, anyRadio })
                 c.Enabled = !busy;
 
             UpdateLimitHint();
@@ -554,7 +539,6 @@ internal sealed class MainForm : Form
         s.Output = options.Output.ToStorageString();
         s.Mode = options.Mode.ToString();
         s.StartDelaySeconds = options.StartDelayMs / 1000;
-        s.UseScanCodes = scanCodeCheck.Checked;
         s.StartHotkey = startHotkey.ToStorageString();
         s.StopHotkey = stopHotkey.ToStorageString();
         s.ToggleHotkey = toggleHotkey.ToStorageString();
@@ -586,8 +570,6 @@ internal sealed class MainForm : Form
         durationCheck.Checked = s.DurationEnabled;
         durationField.Text = (s.DurationMs / 1000.0).ToString("0.###", CultureInfo.InvariantCulture);
         delayField.Text = s.StartDelaySeconds.ToString(CultureInfo.InvariantCulture);
-        scanCodeCheck.Checked = s.UseScanCodes;
-        soundCheck.Checked = s.SoundCues;
         sounds.Enabled = s.SoundCues;
         (s.RunMode == RunMode.Hold ? holdRadio : repeatRadio).Checked = true;
         loading = wasLoading;
@@ -599,7 +581,6 @@ internal sealed class MainForm : Form
         stopButton.Text = $"Stop   {stopHotkey}";
         startButton.AccessibleName = $"Start. Shortcut {startHotkey}.";
         stopButton.AccessibleName = $"Stop. Shortcut {stopHotkey}.";
-        themeButton.Text = $"Theme: {lastValid.Theme}";
     }
 
     // ===================================================================================
@@ -950,11 +931,20 @@ internal sealed class MainForm : Form
     //  Shortcuts
     // ===================================================================================
 
-    private void EditShortcuts()
+    private void OpenSettings()
     {
-        if (busy) { SetNotice("Stop the current run before changing shortcuts."); return; }
-        using var dialog = new ShortcutsForm(startHotkey, stopHotkey, toggleHotkey);
+        if (busy) { SetNotice("Stop the current run before changing settings."); return; }
+        using var dialog = new SettingsForm(startHotkey, stopHotkey, toggleHotkey, lastValid.Theme, lastValid.SoundCues, lastValid.UseScanCodes);
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+        lastValid.SoundCues = dialog.SoundCues;
+        lastValid.UseScanCodes = dialog.UseScanCodes;
+        sounds.Enabled = dialog.SoundCues;
+        if (dialog.ThemeMode != lastValid.Theme)
+        {
+            lastValid.Theme = dialog.ThemeMode;
+            ApplyTheme();
+        }
 
         var (oldStart, oldStop, oldToggle) = (startHotkey, stopHotkey, toggleHotkey);
         UnregisterHotkeys();
@@ -1002,14 +992,6 @@ internal sealed class MainForm : Form
     // ===================================================================================
     //  Appearance
     // ===================================================================================
-
-    private void CycleTheme()
-    {
-        lastValid.Theme = lastValid.Theme switch { "Auto" => "Light", "Light" => "Dark", _ => "Auto" };
-        ApplyTheme();
-        UpdateButtonLabels();
-        SettingsStore.TrySave(settingsPath, lastValid);
-    }
 
     /// <summary>Recolours this window and the practice pad to match the chosen theme, without restarting anything.</summary>
     private void ApplyTheme()

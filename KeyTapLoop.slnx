@@ -5,5 +5,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/KeyTapLoop.Core.Tests/KeyTapLoop.Core.Tests.csproj" />
+    <Project Path="tests/KeyTapLoop.UiTests/KeyTapLoop.UiTests.csproj" />
   </Folder>
 </Solution>

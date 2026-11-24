@@ -50,7 +50,7 @@ Use Notepad, or any plain text box, as the target unless noted. Record each resu
 | 11a | Choose an app running as administrator as the target. The warning and **Restart as administrator** button appear. | | |
 | 11b | Click **Restart as administrator** and accept the prompt. The new window’s title says (administrator) and the old one closes. Choose the same app again: a run now visibly types into it. | | |
 | 11c | Decline the prompt. KeyTapLoop stays as it was and says so. | | |
-| 12a | With **Send as hardware scan codes** on, the Notepad five-tap test still gives exactly five `f`. | | |
+| 12a | With **Send hardware scan codes** on (Settings), the Notepad five-tap test still gives exactly five `f`. | | |
 | 12b | With it off, the same test still gives exactly five `f`. | | |
 | 12c | Arrow keys and Space in scan-code mode behave correctly in Notepad. | | |
 
@@ -60,16 +60,16 @@ Use Notepad, or any plain text box, as the target unless noted. Record each resu
 | --- | --- | --- | --- |
 | 13a | Click into Notepad, press `Ctrl + F3`. A run starts at once. Press `Ctrl + F3` again. It stops with `Stopped by you`. | | |
 | 13b | Press `Ctrl + F3` during the Start button’s countdown. The countdown is cancelled and nothing is sent. | | |
-| 13c | Open **Shortcuts…**. All three can be changed. Setting two to the same keys is refused with a message. | | |
+| 13c | Open **Settings…**. All three shortcuts can be changed. Setting two to the same keys is refused with a message. | | |
 | 13d | Make the output key `Ctrl + F3`. It is refused as one of KeyTapLoop’s own shortcuts. | | |
-| 14a | With **Sounds** on, a rising tone plays when a run starts, and a falling tone when it completes or you stop it. | | |
+| 14a | With sound on in **Settings**, a rising tone plays when a run starts, and a falling tone when it completes or you stop it. | | |
 | 14b | Alt+Tab away mid-run in chosen-window mode. A low double beep plays and the result says focus changed. | | |
-| 14c | Turn **Sounds** off. Nothing plays. Turning it on plays a short preview. | | |
+| 14c | Turn the sound option off in **Settings**. Nothing plays. | | |
 | 14d | The tones are audible with a full-screen game in front, and are not harsh at normal volume. | | |
 | 15a | Set Windows to dark mode, start KeyTapLoop with Theme on **Auto**. It opens dark, with a dark title bar, and nothing is unreadable. | | |
 | 15b | With the app open, switch Windows between light and dark. KeyTapLoop follows within a moment. | | |
-| 15c | Click **Theme** to cycle Auto → Light → Dark → Auto. Every control recolours at once, including the practice pad if open. | | |
-| 15d | In both themes check: toggles, the key list (open it), checkboxes (ticked and unticked), disabled fields, error text, the result card, and the Shortcuts window. Note anything faint, clipped or wrong. | | |
+| 15c | In **Settings**, choose Light, then Dark, then Auto and Save. Every control recolours at once, including the practice pad if open. No text sits on a black patch. | | |
+| 15d | In both themes check: toggles, the key list (open it), checkboxes (ticked and unticked), disabled fields, error text, the result card, and the Settings window. Note anything faint, clipped or wrong. | | |
 | 15e | The practice pad’s text area and key log have dark scrollbars in dark mode. | | |
 | 16a | The key list opens on click, Space, Enter or Down. Up and Down step through keys. Typing a letter or digit jumps to it. Escape closes the list. | | |
 | 16b | Operate the whole window with the keyboard only. Focus is always visible and the tab order is sensible. | | |
