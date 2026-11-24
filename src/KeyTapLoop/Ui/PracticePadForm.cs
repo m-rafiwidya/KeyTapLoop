@@ -37,7 +37,7 @@ internal sealed class PracticePadForm : Form, IMessageFilter
         FormBorderStyle = FormBorderStyle.FixedSingle;
         MaximizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(440, 540);
+        ClientSize = new Size(440, 560);
         Padding = new Padding(24, 22, 24, 20);
 
         var heading = Theme.Label("Practice pad", size: 15f, style: FontStyle.Bold);

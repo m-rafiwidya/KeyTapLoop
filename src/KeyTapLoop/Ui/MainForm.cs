@@ -247,9 +247,9 @@ internal sealed class MainForm : Form
 
     private Control BuildKeyRow()
     {
-        var wrap = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        var wrap = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = Padding.Empty };
 
-        var row = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
+        var row = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = Padding.Empty };
         ctrlToggle.Margin = new Padding(0, 0, 4, 0);
         altToggle.Margin = new Padding(0, 0, 4, 0);
         shiftToggle.Margin = new Padding(0, 0, 10, 0);
@@ -265,7 +265,7 @@ internal sealed class MainForm : Form
 
     private Control BuildModeRow()
     {
-        var wrap = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
+        var wrap = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = Padding.Empty };
         repeatRadio.Margin = new Padding(0, 0, 4, 0);
         wrap.Controls.Add(repeatRadio);
         wrap.Controls.Add(holdRadio);
@@ -274,7 +274,7 @@ internal sealed class MainForm : Form
 
     private Control BuildTimingGrid()
     {
-        var grid = new TableLayoutPanel { AutoSize = true, ColumnCount = 3 };
+        var grid = new TableLayoutPanel { AutoSize = true, ColumnCount = 3, Margin = Padding.Empty };
         grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 116));
         grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
         grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, LeftWidth - 212));
@@ -308,7 +308,7 @@ internal sealed class MainForm : Form
         Add(durationCheck, durationField, "seconds", Field.Duration);
         Add(Theme.Label("Start delay"), delayField, "seconds, Start button only", Field.Delay);
 
-        var wrap = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        var wrap = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = Padding.Empty };
         wrap.Controls.Add(grid);
         wrap.Controls.Add(limitHint);
         return wrap;
@@ -316,14 +316,14 @@ internal sealed class MainForm : Form
 
     private Control BuildTargetBlock()
     {
-        var wrap = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        var wrap = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = Padding.Empty };
 
         var mode = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = new Padding(0, 0, 0, 12) };
         chosenRadio.Margin = new Padding(0, 0, 4, 0);
         mode.Controls.Add(chosenRadio);
         mode.Controls.Add(anyRadio);
 
-        var row = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
+        var row = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = Padding.Empty };
         row.Controls.Add(pickButton);
         row.Controls.Add(targetLabel);
 
