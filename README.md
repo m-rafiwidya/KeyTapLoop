@@ -8,11 +8,13 @@ I made it because the key pressers I tried either did far more than I wanted or 
 
 No installer, no account, no network access, no telemetry. Windows 11, 64-bit.
 
+**[Download for Windows](https://github.com/m-rafiwidya/KeyTapLoop/releases/latest)**  (one zip, one exe, nothing to install)
+
 <p align="center"><img src="docs/screenshot.png" alt="KeyTapLoop in its dark and light themes" width="100%"></p>
 
 ## What it isn't
 
-Not a macro recorder. No mouse clicking, no scripting, no scheduling, nothing that runs on its own. It does nothing until you press Start, and it always opens idle. If you need more than "press this key for a while", [AutoHotkey](https://www.autohotkey.com/) is the better tool.
+Not a macro recorder. No mouse clicking, no scripting, no scheduling, nothing that runs on its own. It does nothing until you press Start, and it always opens idle. If you need more than "press this key for a while", a proper scripting tool is the better fit.
 
 ## What you get
 
@@ -26,22 +28,18 @@ Not a macro recorder. No mouse clicking, no scripting, no scheduling, nothing th
 
 When a run ends it tells you why: `Completed`, `Stopped by you`, `Stopped because focus changed`, `Target closed`, or `Couldn't send input`. You also get the time and how many presses Windows accepted.
 
-## How it compares
+## What's different
 
-I'm not claiming this is the only key presser, or the best one. [KeyPresser](https://github.com/arkhamvm/keypresser) has key sequences, recording, profiles and random timing, and going by its README it deals with administrator windows and scan codes too. If you need any of that, use it.
+Mostly it's about being small and predictable.
 
-What KeyTapLoop does differently is smaller:
-
-- When focus leaves your chosen window, the run ends for good. KeyPresser's default mode waits for the window to come back, which is a fair design too. I'd rather it stop and make me start it again on purpose.
+- When focus leaves your chosen window, the run ends for good. Coming back doesn't restart it. You start it again on purpose.
 - Every run tells you why it ended, in plain words.
 - A few small sounds, so you know what happened without looking.
-- One screen and a handful of options, free, no network.
-
-That's about it. I'm going off the other tools' READMEs here and haven't run them side by side, so take my reading of them with a pinch of salt.
+- One screen and a handful of options. Free, and it never touches the network.
 
 ## Download
 
-1. Grab `KeyTapLoop-v0.1.0-win-x64.zip` from [Releases](../../releases) and unzip it anywhere.
+1. Open the [latest release](https://github.com/m-rafiwidya/KeyTapLoop/releases/latest), scroll down to **Assets**, and download `KeyTapLoop-v0.1.0-win-x64.zip`. Unzip it anywhere.
 2. Optional, but worth doing: check the hash. In PowerShell:
    ```powershell
    (Get-FileHash .\KeyTapLoop-v0.1.0-win-x64.zip -Algorithm SHA256).Hash.ToLower()
