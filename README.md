@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/logo.png" alt="KeyTapLoop logo: a keycap inside a loop arrow" width="112"></p>
+<p align="center"><img src="docs/logo.png" alt="KeyTapLoop logo: a keycap with the letter F inside a loop arrow" width="112"></p>
 
 # KeyTapLoop — Free Auto Key Presser for Windows
 
