@@ -104,6 +104,7 @@ dotnet publish src/KeyTapLoop -c Release -r win-x64 --self-contained -o artifact
 ### What is tested
 
 - **Automated** (`dotnet test`): run limits, timing, skipped slots, cancellation, key-release cleanup, focus-change handling, input validation and settings recovery. These use a virtual clock and a fake keyboard, so they never send real keys.
+- **Automated on Windows (CI):** the UI tests create every window, render it in light and dark, save screenshots, and fail on black patches, controls spilling out of their container, or colours that don’t switch with the theme.
 - **Manual on Windows:** the real `SendInput`, global shortcuts, focus tracking and the UI. The step-by-step checklist is in [docs/TESTING.md](docs/TESTING.md).
 
 ## Demo script (about 20 seconds)

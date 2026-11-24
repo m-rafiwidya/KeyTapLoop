@@ -31,6 +31,17 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
+      - name: Publish portable build
+        run: ./scripts/publish.ps1
+      - name: Upload portable build
+        uses: actions/upload-artifact@v4
+        with:
+          name: KeyTapLoop-win-x64
+          path: |
+            artifacts/*.zip
+            artifacts/*.sha256
+          retention-days: 30
+
       # Keeps the latest screenshots on a branch, so they can be opened straight from the repository.
       - name: Update screenshots branch
         if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -48,14 +59,3 @@ jobs:
             git commit -q -m "UI screenshots for ${GITHUB_SHA}"
             git push --force origin ci-screenshots
           fi
-
-      - name: Publish portable build
-        run: ./scripts/publish.ps1
-      - name: Upload portable build
-        uses: actions/upload-artifact@v4
-        with:
-          name: KeyTapLoop-win-x64
-          path: |
-            artifacts/*.zip
-            artifacts/*.sha256
-          retention-days: 30
