@@ -6,7 +6,7 @@ It presses a key for you. Tap it every 200 ms, hold it down, send a shortcut. Fo
 
 I made it because the key pressers I tried either did far more than I wanted or kept the useful parts behind a paywall. This one has a handful of options, tells you what happened when it's done, and stops the moment you switch windows, so it doesn't start typing into whatever you open next.
 
-No installer, no account, no network access, no telemetry. Windows 11, 64-bit.
+No installer, no account, no network access, no telemetry. Windows 11, 64-bit. Press F.
 
 <p align="center"><img src="docs/screenshot.png" alt="KeyTapLoop in its dark and light themes" width="100%"></p>
 
