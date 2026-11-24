@@ -34,23 +34,42 @@ The certificate is issued to SignPath Foundation, so **SignPath Foundation is sh
 
 The signing step is switched off until `SIGNPATH_ORGANIZATION_ID` exists, so releases keep working unsigned in the meantime. I couldn’t test the SignPath step from here. Expect to adjust the artifact configuration on first use.
 
-## Answers for the SignPath application
+## Answers for the SignPath application form
 
-Use these when you fill in the form. Check each against the form’s current fields, and correct anything that isn’t true by then.
+These match the fields on <https://signpath.org/apply>. Check each against the live form and change anything that has stopped being true.
 
-| Field | Answer |
+| Field | What to put |
 | --- | --- |
-| Project name | KeyTapLoop |
-| Repository | `https://github.com/m-rafiwidya/KeyTapLoop` (must be public when you apply) |
-| License | MIT (OSI-approved) |
-| One-line description | A free, portable Windows utility that repeats or holds one key or shortcut for a set count or time, with global shortcuts and a run that ends when focus moves. |
-| What would be signed | `KeyTapLoop.exe`, a self-contained .NET 10 WinForms executable, built from source by GitHub Actions on tagged releases. |
-| Build system | GitHub Actions (`.github/workflows/release.yml`) |
-| Network access or telemetry | None. No accounts, no network calls, no telemetry. |
-| Does it need elevated rights? | No. It runs with normal user rights. An optional “restart as administrator” button exists for sending keys to administrator windows. |
-| Download page | The repository’s Releases page, with a SHA-256 hash for each file |
+| Project Name | `KeyTapLoop` |
+| Repository URL | `https://github.com/m-rafiwidya/KeyTapLoop` (the repo must be public) |
+| Homepage URL | `https://github.com/m-rafiwidya/KeyTapLoop` |
+| Download URL | Optional. Leave it empty until a release exists, then use `https://github.com/m-rafiwidya/KeyTapLoop/releases`. The form says this page must mention the SignPath Foundation, and the README’s “Code signing” section does. |
+| Privacy Policy URL | `https://github.com/m-rafiwidya/KeyTapLoop#privacy` (the app collects nothing, but the section is there) |
+| Wikipedia URL | Leave empty |
+| Tagline | A small Windows utility that repeats or holds a key for a set time and stops the moment you switch windows. |
+| Category | The closest of the options. Something like Utilities or Productivity. |
+| Description | KeyTapLoop is a small, portable Windows utility that repeats or holds a single key or shortcut for a set number of presses or amount of time. By default it is tied to one chosen window and stops as soon as focus moves to another window. It does nothing until the user starts it, uses the standard Windows SendInput API with normal user rights, needs no installer, makes no network connections and collects no data. It is written in C# with WinForms and is MIT licensed. |
+| Reputation | See below. |
+| Maintainer Type | Individual |
+| Build System | GitHub Actions |
+| First name, last name, email | Yours. The email gets the application updates. |
+| Company Name | Leave empty unless it applies |
+| Primary Discovery Channel | Whichever option fits. If you pick something like “Other” or “Search engine”, a true specific source is Microsoft Learn’s page on code signing options for Windows apps. |
+| Checkboxes | Read the Code of Conduct, then tick the required boxes yourself. The communications box is optional. |
 
-Be upfront that the app **sends simulated keyboard input**. Automation tools can look like unwanted software to scanners and reviewers, so say clearly what it does, that it is open source, and that it never runs without the user starting it.
+### Reputation (be honest here)
+
+The form asks for evidence that the project is widely used. A new project can’t honestly claim that, so don’t. Something like this is true and still useful:
+
+> KeyTapLoop is new, so I don’t have download numbers or press coverage to point to yet. What I can show is that the source is public under the MIT license, every push is built and tested on GitHub Actions (including automated rendering checks of the UI on Windows), and releases will be built by that same workflow. The app makes no network connections and collects no data, which the README documents. I’m applying early so the first public release can be signed from the start.
+>
+> Build and test history: https://github.com/m-rafiwidya/KeyTapLoop/actions
+
+If they ask for more track record, tagging a first release and letting a few real people use it is the straightforward answer. I couldn’t find any published minimum for stars or downloads.
+
+### Before you tick the Code of Conduct box
+
+The certificate is issued to the SignPath Foundation, which becomes the publisher of your software, so it can’t risk signing anything it considers unwanted. The terms page said it isn’t final yet, and I couldn’t read its full list of what’s not allowed, because that site isn’t reachable from the environment I work in. KeyTapLoop sends simulated keyboard input, which some people associate with game tools. Read the Code of Conduct yourself, and if anything in it looks like it could apply, ask them before applying.
 
 ## Draft code signing policy
 
