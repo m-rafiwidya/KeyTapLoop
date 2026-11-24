@@ -1,0 +1,68 @@
+name: Bug report
+description: Something didn't work the way the README says it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. The questions below are the ones that usually decide what's going on.
+
+        One thing up front: I can't help with getting KeyTapLoop past a game's anti-cheat or using it where automation is banned.
+  - type: input
+    id: version
+    attributes:
+      label: KeyTapLoop version
+      description: It's at the bottom of the window.
+      placeholder: v0.1.0
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: Windows 11 23H2
+  - type: dropdown
+    id: target
+    attributes:
+      label: What were you sending keys to?
+      options:
+        - A normal app (Notepad, a browser, an editor)
+        - A game
+        - The built-in practice pad
+        - Something else
+    validations:
+      required: true
+  - type: dropdown
+    id: admin
+    attributes:
+      label: Is that app running as administrator?
+      description: In Task Manager, Details tab, add the "Elevated" column. If it says Yes, KeyTapLoop needs to be elevated too (there's a Restart as administrator button).
+      options:
+        - Yes, and KeyTapLoop was restarted as administrator
+        - Yes, and KeyTapLoop was not
+        - No
+        - I don't know
+    validations:
+      required: true
+  - type: dropdown
+    id: pad
+    attributes:
+      label: Did the practice pad receive the keys?
+      description: Choose "Use practice pad" and run it. If the pad sees the keys, KeyTapLoop is sending them fine.
+      options:
+        - Yes
+        - No
+        - I haven't tried
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: What did the result box say?
+      description: For example "Stopped because focus changed" or "Couldn't send input". Screenshots are welcome.
