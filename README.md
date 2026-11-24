@@ -110,7 +110,9 @@ No accounts, no telemetry, no network calls. Settings live in `%LOCALAPPDATA%\Ke
 
 ## Code signing
 
-Release builds aren't signed yet. I'm applying for free code signing through the [SignPath Foundation](https://signpath.org/). If that goes through, this section will say so. The details of how signing works for this project are in [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md).
+Release builds aren't signed. I applied for free signing through the [SignPath Foundation](https://signpath.org/) and they said not yet: they want to see more public adoption first, which is fair for a project this new. I'll try again once there's more of a track record.
+
+Until then, each release comes with a SHA-256 hash and is built by GitHub Actions from the source in this repo, so you can check what you're running. How the signing setup works is in [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md).
 
 ## Building it yourself
 

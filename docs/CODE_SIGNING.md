@@ -1,5 +1,7 @@
 # Code signing
 
+> **Status (24 Nov 2026):** the SignPath Foundation declined the first application. Their reason was public visibility, not the project's quality or conduct: they look for signals such as GitHub stars, forks and contributors, external articles or discussions, and a record of sustained activity. They invited a reapplication once the project has more of that. Releases are unsigned for now. The signing step in `release.yml` stays switched off until `SIGNPATH_ORGANIZATION_ID` exists.
+
 Signing `KeyTapLoop.exe` puts a verified publisher name on the file and lets Windows build a reputation for it over time. It makes the download more trustworthy. It does **not** remove the Windows SmartScreen warning on day one.
 
 ## What signing does and doesn’t do
